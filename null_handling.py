@@ -18,9 +18,6 @@ def remove_nulls(data, mode="mean", add_null_columns=False):
     data = copy.deepcopy(data)
     data_null = pd.isnull(data)
 
-    data['Target_Sales']
-    data_null['Target_Sales']
-
     if mode == "mean":
         substitute = data.mean()
     elif mode == "median":

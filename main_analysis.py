@@ -16,6 +16,8 @@ from __future__ import division
 import csv
 import pandas as pd
 import numpy as np
+import sklearn as sk
+from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
 from null_handling import remove_nulls
@@ -40,5 +42,27 @@ data_median = data.median()
 print("data_median\n", data_median)
 
 
+# Handling of null values (nans)
 data = remove_nulls(data, mode='mean', add_null_columns=True)
 print("data.head()\n", data.head())
+
+# Removal of outliers
+data_np = data.values
+print(data_np.shape)
+
+pca = PCA(n_components=30)
+pca.fit(data_np)
+y = pca.transform(data_np)
+print(data_np[0:1,:])
+print(pca.inverse_transform(y[0:1,:]))
+print('pca.explained_variance_:', pca.explained_variance_)
+print('pca.components_:', pca.components_)
+print('pca.components_[0]:', pca.components_[0])
+
+# Label enlargement
+
+# Split of samples
+
+
+# ML methods
+
