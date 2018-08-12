@@ -131,4 +131,12 @@ test_acc[('LogisticRegression_CR', 'train')] = accuracy_score(ts_train, pred_log
 test_acc[('LogisticRegression_CR', 'val')] = accuracy_score(ts_val, pred_logr_val)
 print(test_acc)
 
+res_sold_df = pd.DataFrame()
+for (alg, test_set) in test_acc.keys():
+    res_sold_df.loc[alg, test_set] = test_acc[(alg, test_set)]
+print(res_sold_df)
 
+#TODO: Create module for data_loading
+#TODO: Add baseline model for target_sales
+#TODO: Add more algorithms
+#TODO: Hyperparameter search
