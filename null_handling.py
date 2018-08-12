@@ -17,6 +17,7 @@ import pandas as pd
 def remove_nulls(data, mode="mean", add_null_columns=False):
     data = copy.deepcopy(data)
     data_null = pd.isnull(data)
+    print("data_null:\n", data_null)
 
     if mode == "mean":
         substitute = data.mean()
@@ -25,7 +26,6 @@ def remove_nulls(data, mode="mean", add_null_columns=False):
     else:
         raise ValueError("invalid mode:" + str(mode))
     print("substitute:\n", substitute)
-    substitute['Target_Sales']
 
     columns = data.columns
     for column in columns:

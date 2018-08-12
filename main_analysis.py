@@ -19,6 +19,23 @@ import numpy as np
 import sklearn as sk
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import accuracy_score
+# Regression/ensemble algorithms
+from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Ridge
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+# Classification/ensemble algorithms
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import BaggingClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+
 import matplotlib.pyplot as plt
 
 from null_handling import remove_nulls
@@ -44,12 +61,24 @@ print("data_median\n", data_median)
 
 
 # Handling of null values (nans)
+#TODO: Separate here id, target_sold, target_sales
+
+# Why was this weird column name used? '\xef\xbb\xbfID'
+id_df = data['ID'] # ID
+target_sold_df = data['Target_Sold'] # ).copy()
+target_sales_df = data['Target_Sales'] # ).copy()
+data = data.drop(['ID', 'Target_Sold', 'Target_Sales'], axis=1)
 data = remove_nulls(data, mode='mean', add_null_columns=True)
 print("data.head()\n", data.head())
 
-# Removal of outliers
+# Convert data to numpy ndarrays
+lead_id = id_df.values
+target_sold = target_sold_df.values
+target_sales = target_sales_df.values
 data_np = data.values
-print(data_np.shape)
+print('data_np.shape:', data_np.shape)
+
+# Removal of outliers
 
 pca = PCA(n_components=30)
 pca.fit(data_np)
@@ -60,10 +89,8 @@ print('pca.explained_variance_:', pca.explained_variance_)
 print('pca.components_:', pca.components_)
 print('pca.components_[0]:', pca.components_[0])
 
-lead_id = data_np[:, 0]
-target_sold = data_np[:, 1]
-target_sales = data_np[:, 2]
-data_np = data_np[:, 3:]
+
+
 
 data_np_sold = data_np[target_sold == 1.0, :]
 target_sales_sold = target_sales[target_sold == 1.0]
@@ -81,6 +108,27 @@ X_train, X_val, ts_train, ts_val = \
 print("len(X_train):", len(X_train), "len(X_val):", len(X_val), "len(X_test):", len(X_test))
 print("len(ts_train):", len(ts_train), "len(ts_val):", len(ts_val), "len(ts_test):", len(ts_test))
 
-
 # ML methods
+test_acc = {}
+lr = LinearRegression(fit_intercept=True, n_jobs=1, normalize=False)
+lr.fit(X_train, ts_train)
+pred_lr_train = lr.predict(X_train)
+pred_lr_val = lr.predict(X_val)
+test_acc[('LinearRegression_MSE', 'train')] = mean_squared_error(ts_train, pred_lr_train)
+test_acc[('LinearRegression_MSE', 'val')] = mean_squared_error(ts_val, pred_lr_val)
+test_acc[('LinearRegression_CR', 'train')] = accuracy_score(ts_train, pred_lr_train >= 0.5)
+test_acc[('LinearRegression_CR', 'val')] = accuracy_score(ts_val, pred_lr_val >= 0.5)
+
+print(lr.coef_)
+
+logr = LogisticRegression(C=1.0)
+logr.fit(X_train, ts_train)
+pred_logr_train = logr.predict(X_train)
+pred_logr_val = logr.predict(X_val)
+test_acc[('LogisticRegression_MSE', 'train')] = mean_squared_error(ts_train, pred_logr_train)
+test_acc[('LogisticRegression_MSE', 'val')] = mean_squared_error(ts_val, pred_logr_val)
+test_acc[('LogisticRegression_CR', 'train')] = accuracy_score(ts_train, pred_logr_train)
+test_acc[('LogisticRegression_CR', 'val')] = accuracy_score(ts_val, pred_logr_val)
+print(test_acc)
+
 
