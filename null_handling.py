@@ -14,6 +14,7 @@ import copy
 
 import pandas as pd
 
+
 def remove_nulls(data, mode="mean", add_null_columns=False):
     data = copy.deepcopy(data)
     data_null = pd.isnull(data)
