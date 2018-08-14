@@ -4,6 +4,7 @@ from __future__ import division
 
 import csv
 import pandas as pd
+import numpy as np
 
 def read_data(filename):
     data = pd.read_csv(filename, decimal=',', sep=';')
@@ -35,3 +36,18 @@ def read_explanations(explanations_filename):
     explanations_file.close()
     # print(explanations)
     return explanations
+
+
+def compute_indices_train_val_test(num_samples, frac_val=0.2, frac_test=0.2):
+    all_indices = np.arange(num_samples)
+    np.random.shuffle(all_indices)
+    samples_train = int(num_samples * (1.0 - frac_val - frac_test))
+    samples_val = int(num_samples * frac_val)
+    indices_train = all_indices[0:samples_train]
+    indices_val = all_indices[samples_train:samples_train + samples_val]
+    indices_test = all_indices[samples_train + samples_val:num_samples]
+    return indices_train, indices_val, indices_test
+
+
+def split_data(data, indices_train, indices_val, indices_test):
+    return data[indices_train], data[indices_val], data[indices_test]
