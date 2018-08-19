@@ -43,6 +43,8 @@ from data_loading import read_explanations
 from data_loading import compute_indices_train_val_test
 from data_loading import split_data
 from null_handling import remove_nulls
+from correlation_analysis import analyze_using_PCA
+from correlation_analysis import analyze_correlation_matrix
 
 # Load data and field explanations (files have been renamed)
 filename = 'data/testdata.csv'
@@ -52,34 +54,27 @@ print(target_sold_df.describe())
 print(target_sales_df.describe())
 data_df = remove_nulls(data_df, mode='mean', add_null_columns=True)
 
+print("data_df.columns[50]:", data_df.columns[50])
+print("data_df.columns[61]:", data_df.columns[61])
+#quit()
+
 explanations_filename = 'data/variable_explanations.csv'
 explanations = read_explanations(explanations_filename)
 print("Feature descriptions:\n", explanations)
 
+if False:
+    analyze_correlation_matrix(target_sold_df, target_sales_df, data_df)
+
 # Convert data to numpy
 lead_id = id_df.values
 target_sold = target_sold_df.values
-target_sales_all = target_sales_df.values
-data = data_df.values
+target_sales_all = np.nan_to_num(target_sales_df.values)
+data = data_df.values.astype(float)
 print('data.shape:', data.shape)
 
-# Removal of outliers
-#y = target_sales_all[target_sold == 1.0].copy()
-#y = np.sort(y)
-#print(y, y.shape)
-#print("top 10 sales:", y[-10:-5])
-#print("top 10 sales:", y[-5:])
-#quit()
-
-# Basic experiment to see correlations
-pca = PCA(n_components=30) # TODO: center and normalize data
-pca.fit(data)
-y = pca.transform(data)
-print(data[0:1,:])
-print(pca.inverse_transform(y[0:1,:]))
-print('pca.explained_variance_:', pca.explained_variance_)
-print('pca.components_:', pca.components_)
-print('pca.components_[0]:', pca.components_[0])
+# Apply correlation analysis
+analyze_using_PCA(target_sold, target_sales_all, data)
+quit()
 
 # Extract data for sales predictions
 data_sales_sel = data[target_sold == 1.0, :]
@@ -123,9 +118,43 @@ print("len(y_m2_train):", len(y_m2_train),
       "len(y_m2_val):", len(y_m2_val),
       "len(y_m2_test):", len(y_m2_test))
 
+
+# Normalize the data
+# first model
+X_train_mean = X_train.mean(axis=0)
+print("X_train:", X_train)
+print("X_train[0]:", X_train[0])
+print("X_train.shape:", X_train.shape)
+X_train_std = X_train.std(axis=0)
+print("X_train_std:", X_train_std)
+X_train_std += 0.01
+X_train =  (X_train - X_train_mean) / X_train_std
+X_val =  (X_val - X_train_mean) / X_train_std
+X_test =  (X_test - X_train_mean) / X_train_std
+# second model uses the same normalization
+#X_m2_train_mean = X_m2_train.mean(axis=0)
+#X_m2_train_std = X_m2_train.std(axis=0)
+X_m2_train =  (X_m2_train - X_train_mean) / X_train_std
+X_m2_val =  (X_m2_val - X_train_mean) / X_train_std
+X_m2_test =  (X_m2_test - X_train_mean) / X_train_std
+
+
+
+
+
+# Removal of outliers from training data
+#y = target_sales_all[target_sold == 1.0].copy()
+#y = np.sort(y)
+#print(y, y.shape)
+#print("top 10 sales:", y[-10:-5])
+#print("top 10 sales:", y[-5:])
+#quit()
+
+# Feature normalization (zero-mean unit-variance or range [0, 1])
+
 # ML methods
 test_acc = {}
-# M1. ChanceLevel
+# M1. ChanceLevel estimations
 test_acc[('ChanceLevel_MSE', 'train')] = mean_squared_error(y_train, y_train.mean() * np.ones_like(y_train))
 test_acc[('ChanceLevel_MSE', 'val')] = mean_squared_error(y_val, y_val.mean() * np.ones_like(y_val))
 test_acc[('ChanceLevel_CR', 'train')] = accuracy_score(y_train, stats.mode(y_train)[0] * np.ones_like(y_train))
@@ -160,8 +189,7 @@ for (alg, test_set) in test_acc.keys():
     res_sold_df.loc[alg, test_set] = test_acc[(alg, test_set)]
 print(res_sold_df)
 
-
-#Second model
+# Second model M2
 test_m2_acc = {}
 test_m2_acc[('ChanceLevel_MSE', 'train')] = \
     mean_squared_error(y_m2_train, y_m2_train.mean() * np.ones_like(y_m2_train))
@@ -181,7 +209,8 @@ for (alg, test_set) in test_m2_acc.keys():
     res_sales_df.loc[alg, test_set] = test_m2_acc[(alg, test_set)]
 print(res_sales_df)
 
-# Compute expected sales (prob of sale * estimated sale value)
+
+# Expected sales (prob of sale * estimated sale value)
 pred_m2_lr_train_all = lr.predict(X_train)
 pred_m2_lr_val_all = lr.predict(X_val)
 pred_m2_lr_test_all = lr.predict(X_test)
@@ -195,14 +224,35 @@ print("true sales_val:\n", target_sales_all[indices_val])
 
 promising_sales_indices_train = np.argsort(expected_sales_train)
 promising_sales_indices_val = np.argsort(expected_sales_val)
-top_promising_sales_indices_train = promising_sales_indices_train[-5:]
-top_promising_sales_indices_val = promising_sales_indices_val[-5:]
+leads_kept_train = np.rint(0.4 * len(X_train)).astype(int)
+leads_kept_val = np.rint(0.4 * len(X_val)).astype(int)
+top_promising_sales_indices_train = promising_sales_indices_train[-leads_kept_train:]
+top_promising_sales_indices_val = promising_sales_indices_val[-leads_kept_val:]
 print("top expected_sales_train:\n", expected_sales_train[top_promising_sales_indices_train])
 print("correct expected_sales_train:\n", target_sales_all[indices_train][top_promising_sales_indices_train])
 print("top expected_sales_val:\n", expected_sales_val[top_promising_sales_indices_val])
 print("correct expected_sales_val:\n", target_sales_all[indices_val][top_promising_sales_indices_val])
 
-#TODO: Create module for data_loading
-#TODO: Add baseline model for target_sales
-#TODO: Add more algorithms
-#TODO: Hyperparameter search
+total_revenue_train = target_sales_all[indices_train].sum()
+total_revenue_val = target_sales_all[indices_val].sum()
+print("total_revenue_train", total_revenue_train)
+print("total_revenue_val", total_revenue_val)
+
+e_total_revenue_train_sel = expected_sales_train[top_promising_sales_indices_train].sum()
+e_total_revenue_val_sel = expected_sales_val[top_promising_sales_indices_val].sum()
+print("e_total_revenue_train_sel", e_total_revenue_train_sel)
+print("e_total_revenue_val_sel", e_total_revenue_val_sel)
+
+total_revenue_train_sel = target_sales_all[indices_train][top_promising_sales_indices_train].sum()
+total_revenue_val_sel = target_sales_all[indices_val][top_promising_sales_indices_val].sum()
+print("total_revenue_train_sel", total_revenue_train_sel)
+print("total_revenue_val_sel", total_revenue_val_sel)
+
+
+# TODO: Create module for data_loading
+# TODO: Add baseline model for target_sales
+# TODO: Add more algorithms
+# TODO: Hyperparameter search
+
+
+# TODO: use best hyperparameters and repeat training on data (train+val)

@@ -21,7 +21,8 @@ def remove_nulls(data, mode="mean", add_null_columns=False):
     print("data_null:\n", data_null)
 
     if mode == "mean":
-        substitute = data.mean()
+        substitute = data.mean() # column-wise by default
+        # print("data.mean()", data.mean())
     elif mode == "median":
         substitute = data.median()
     else:
@@ -30,11 +31,17 @@ def remove_nulls(data, mode="mean", add_null_columns=False):
 
     columns = data.columns
     for column in columns:
-        print("column:", column)
-        print("data[column]", data[column])
+        ## print("column:", column)
+        ## print("data[column]", data[column])
         data.loc[data_null[column], column] = substitute[column]
 
     if add_null_columns:
         for column in columns:
-            data['null_'+column] = data_null[column]
+            # Only add column with null flags if the
+            # original column contains nans
+            ## print("data[column].isnull()", data[column].isnull())
+            ## print("data[column].isnull().values.any()", data[column].isnull().values.any())
+            if data_null[column].values.any():
+                ## print("good")
+                data['null_'+column] = data_null[column]
     return data
