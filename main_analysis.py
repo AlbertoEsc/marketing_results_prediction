@@ -21,6 +21,12 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import log_loss as cross_entropy
+
+# Functions and classes used for hyperparameter search
+from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import randint as sp_randint
+from scipy.stats import uniform as sp_uniform
 # Regression/ensemble algorithms
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
@@ -36,6 +42,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 
+
 import matplotlib.pyplot as plt
 
 from data_loading import read_data
@@ -46,23 +53,35 @@ from null_handling import remove_nulls
 from correlation_analysis import analyze_using_PCA
 from correlation_analysis import analyze_correlation_matrix
 
-# Load data and field explanations (files have been renamed)
+# Configuration. These variables specify
+# the execution of the whole analysis
 filename = 'data/testdata.csv'
+explanations_filename = 'data/variable_explanations.csv'
+NUMPY_SEED = 1234
+enable_correlation_analysis = False
+enable_pca_analysis = False
+
+enable_random_forest_classifier = True
+enable_gradient_boosting_classifier = False # or True
+
+enable_ridge_regression = True
+enable_random_forest_regressor = False or True
+enable_gradient_boosting_regressor = False or True
+
+# Load data and field explanations (files have been renamed)
 data_df, id_df, target_sold_df, target_sales_df = read_data(filename)
 print(data_df.describe())
 print(target_sold_df.describe())
 print(target_sales_df.describe())
 data_df = remove_nulls(data_df, mode='mean', add_null_columns=True)
 
-print("data_df.columns[50]:", data_df.columns[50])
-print("data_df.columns[61]:", data_df.columns[61])
-#quit()
+# print("data_df.columns[50]:", data_df.columns[50])
+# print("data_df.columns[61]:", data_df.columns[61])
 
-explanations_filename = 'data/variable_explanations.csv'
 explanations = read_explanations(explanations_filename)
 print("Feature descriptions:\n", explanations)
 
-if False:
+if enable_correlation_analysis:
     analyze_correlation_matrix(target_sold_df, target_sales_df, data_df)
 
 # Convert data to numpy
@@ -73,8 +92,9 @@ data = data_df.values.astype(float)
 print('data.shape:', data.shape)
 
 # Apply correlation analysis
-analyze_using_PCA(target_sold, target_sales_all, data)
-quit()
+if enable_pca_analysis:
+    analyze_using_PCA(target_sold, target_sales_all, data)
+# quit()
 
 # Extract data for sales predictions
 data_sales_sel = data[target_sold == 1.0, :]
@@ -87,7 +107,7 @@ print("len(data_sales_sel):", len(data_sales_sel),
 # Split of samples (train, validation, test)
 # The features for the first model are called X_train, X_val, X_test,
 # and labels (target_sold) are called y_train, y_val, y_test
-np.random.seed(1234)
+np.random.seed(NUMPY_SEED)
 indices_train, indices_val, indices_test = \
     compute_indices_train_val_test(len(data), frac_val=0.2, frac_test=0.2)
 X_train, X_val, X_test = \
@@ -164,24 +184,78 @@ test_acc[('ChanceLevel_CR', 'val')] = accuracy_score(y_val, stats.mode(y_val)[0]
 lr = LinearRegression(fit_intercept=True, n_jobs=1, normalize=False)
 lr.fit(X_train, y_train)
 pred_lr_train = lr.predict(X_train)
-pred_lr_val = lr.predict(X_val)
+pred_lr_train = pred_lr_train.clip(0, 1)
+prob_lr_train = np.stack((1-pred_lr_train, pred_lr_train), axis=1)
+pred_lr_val = lr.predict(X_val).clip(0, 1)
+pred_lr_val = pred_lr_val.clip(0, 1)
+prob_lr_val = np.stack((1-pred_lr_val, pred_lr_val), axis=1)
 test_acc[('LinearRegression_MSE', 'train')] = mean_squared_error(y_train, pred_lr_train)
 test_acc[('LinearRegression_MSE', 'val')] = mean_squared_error(y_val, pred_lr_val)
 test_acc[('LinearRegression_CR', 'train')] = accuracy_score(y_train, pred_lr_train >= 0.5)
 test_acc[('LinearRegression_CR', 'val')] = accuracy_score(y_val, pred_lr_val >= 0.5)
+test_acc[('LinearRegression_CE', 'train')] = cross_entropy(y_train, prob_lr_train)
+test_acc[('LinearRegression_CE', 'val')] = cross_entropy(y_val, prob_lr_val)
 print(lr.coef_)
 
+# M1. LogisticRegression
 logr = LogisticRegression(C=1.0)
 logr.fit(X_train, y_train)
 pred_logr_train = logr.predict(X_train)
 pred_logr_val = logr.predict(X_val)
 prob_logr_train = logr.predict_proba(X_train)
 prob_logr_val = logr.predict_proba(X_val)
-
 test_acc[('LogisticRegression_MSE', 'train')] = mean_squared_error(y_train, pred_logr_train)
 test_acc[('LogisticRegression_MSE', 'val')] = mean_squared_error(y_val, pred_logr_val)
 test_acc[('LogisticRegression_CR', 'train')] = accuracy_score(y_train, pred_logr_train)
 test_acc[('LogisticRegression_CR', 'val')] = accuracy_score(y_val, pred_logr_val)
+test_acc[('LogisticRegression_CE', 'train')] = cross_entropy(y_train, prob_logr_train)
+test_acc[('LogisticRegression_CE', 'val')] = cross_entropy(y_val, prob_logr_val)
+
+# M1. RandomForestClassifier
+if enable_random_forest_classifier:
+    print('Using randomized search to tune a random forest classifier...')
+    param_dist_rf = {"n_estimators": sp_randint(15, 25)}
+    rf = RandomForestClassifier()
+    rf_rs = RandomizedSearchCV(rf, n_iter=3, cv=5,
+                               param_distributions=param_dist_rf)
+    rf_rs.fit(X_train, y_train)
+    pred_rf_train = rf_rs.predict(X_train)
+    pred_rf_val = rf_rs.predict(X_val)
+    prob_rf_train = rf_rs.predict_proba(X_train)
+    prob_rf_val = rf_rs.predict_proba(X_val)
+    test_acc[('RandomForestClassifier_CR', 'train')] = accuracy_score(y_train, pred_rf_train)
+    test_acc[('RandomForestClassifier_CR', 'val')] = accuracy_score(y_val, pred_rf_val)
+    test_acc[('RandomForestClassifier_CE', 'train')] = cross_entropy(y_train, prob_rf_train)
+    test_acc[('RandomForestClassifier_CE', 'val')] = cross_entropy(y_val, prob_rf_val)
+    print("RandomForest best_score:", rf_rs.best_score_,
+          "best_params:", rf_rs.best_params_)
+
+# M1. GradientBoostingClassifier
+if enable_gradient_boosting_classifier:
+    print('Using randomized search to tune a gradient boosting classifier...')
+    param_dist_gbc = {"n_estimators": sp_randint(105, 145),
+                      "max_depth": sp_randint(2,5),
+                      "learning_rate": sp_uniform(0.55, 0.75)}
+    gbc = GradientBoostingClassifier()
+    gbc_rs = RandomizedSearchCV(gbc, n_iter=1, cv=5,
+                                param_distributions=param_dist_gbc)
+    gbc_rs.fit(X_train, y_train)
+    pred_gbc_train = gbc_rs.predict(X_train)
+    pred_gbc_val = gbc_rs.predict(X_val)
+    prob_gbc_train = gbc_rs.predict_proba(X_train)
+    prob_gbc_val = gbc_rs.predict_proba(X_val)
+    test_acc[('GradientBoostingClassifier_CR', 'train')] = \
+        accuracy_score(y_train, pred_gbc_train)
+    test_acc[('GradientBoostingClassifier_CR', 'val')] = \
+        accuracy_score(y_val, pred_gbc_val)
+    test_acc[('GradientBoostingClassifier_CE', 'train')] = \
+        cross_entropy(y_train, pred_gbc_train)
+    test_acc[('GradientBoostingClassifier_CE', 'val')] = \
+        cross_entropy(y_val, pred_gbc_val)
+
+    print("GradientBoostingClassifier best_score:", gbc_rs.best_score_,
+          "best_params:", gbc_rs.best_params_)
+
 print(test_acc)
 
 res_sold_df = pd.DataFrame()
@@ -189,13 +263,14 @@ for (alg, test_set) in test_acc.keys():
     res_sold_df.loc[alg, test_set] = test_acc[(alg, test_set)]
 print(res_sold_df)
 
-# Second model M2
+# Second model (M2)
 test_m2_acc = {}
 test_m2_acc[('ChanceLevel_MSE', 'train')] = \
     mean_squared_error(y_m2_train, y_m2_train.mean() * np.ones_like(y_m2_train))
 test_m2_acc[('ChanceLevel_MSE', 'val')] = \
     mean_squared_error(y_m2_val, y_m2_val.mean() * np.ones_like(y_m2_val))
 
+# M2. LinearRegression
 lr = LinearRegression(fit_intercept=True, n_jobs=1, normalize=False)
 lr.fit(X_m2_train, y_m2_train)
 pred_lr_train = lr.predict(X_m2_train)
@@ -203,6 +278,56 @@ pred_lr_val = lr.predict(X_m2_val)
 test_m2_acc[('LinearRegression_MSE', 'train')] = mean_squared_error(y_m2_train, pred_lr_train)
 test_m2_acc[('LinearRegression_MSE', 'val')] = mean_squared_error(y_m2_val, pred_lr_val)
 print(lr.coef_)
+
+# M2. Ridge regression
+if enable_ridge_regression:
+    print('Using randomized search to tune ridge regression...')
+    param_dist_rid = {"alpha": sp_uniform(0,3)}
+    rid = Ridge(alpha=0.125, normalize=True)
+    rid_rs = RandomizedSearchCV(rid, n_iter=3, cv=5,
+                                param_distributions=param_dist_rid)
+    rid_rs.fit(X_m2_train, y_m2_train)
+    pred_rid_train = rid_rs.predict(X_m2_train)
+    pred_rid_val = rid_rs.predict(X_m2_val)
+    test_m2_acc[('Ridge_MSE', 'train')] = mean_squared_error(y_m2_train, pred_rid_train)
+    test_m2_acc[('Ridge_MSE', 'val')] = mean_squared_error(y_m2_val, pred_rid_val)
+    print("Ridge best_score:", rid_rs.best_score_,
+          "best_params:", rid_rs.best_params_)
+
+# M2. RandomForestRegressor
+if enable_random_forest_regressor:
+    print('Using randomized search to tune a random forest regressor...')
+    param_dist_rfr = {"max_depth": [1, 2, 3, 4, 5]}
+    rfr = RandomForestRegressor(max_depth=3, random_state=0)
+    rfr_rs = RandomizedSearchCV(rfr, n_iter=5, cv=5,
+                                param_distributions=param_dist_rfr)
+    rfr_rs.fit(X_m2_train, y_m2_train)
+    pred_rfr_train = rfr_rs.predict(X_m2_train)
+    pred_rfr_val = rfr_rs.predict(X_m2_val)
+    test_m2_acc[('RandomForestRegressor_MSE', 'train')] = mean_squared_error(y_m2_train, pred_rfr_train)
+    test_m2_acc[('RandomForestRegressor_MSE', 'val')] = mean_squared_error(y_m2_val, pred_rfr_val)
+    print("RandomForestRegressor best_score:", rfr_rs.best_score_,
+          "best_params:", rfr_rs.best_params_)
+
+# M2. GradientBoostingRegressor
+if enable_gradient_boosting_regressor:
+    print('Using randomized search to tune a gradient boosting regressor...')
+    param_dist_gbr = {"n_estimators": sp_randint(50, 110),
+                      "max_depth": sp_randint(1, 3),
+                      "learning_rate": sp_uniform(0.05, 0.25)}
+    gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1,
+                                    max_depth=1, random_state=0, loss='ls')
+    gbr_rs = RandomizedSearchCV(gbr, n_iter=1, cv=5,
+                                param_distributions=param_dist_gbr)
+    gbr_rs.fit(X_m2_train, y_m2_train)
+    pred_gbr_train = gbr_rs.predict(X_m2_train)
+    pred_gbr_val = gbr_rs.predict(X_m2_val)
+    test_m2_acc[('GradientBoostingRegressor_MSE', 'train')] = \
+        mean_squared_error(y_m2_train, pred_gbr_train)
+    test_m2_acc[('GradientBoostingRegressor_MSE', 'val')] = \
+        mean_squared_error(y_m2_val, pred_gbr_val)
+    print("GradientBoostingRegressor best_score:", gbr_rs.best_score_,
+          "best_params:", gbr_rs.best_params_)
 
 res_sales_df = pd.DataFrame()
 for (alg, test_set) in test_m2_acc.keys():
