@@ -57,18 +57,18 @@ from correlation_analysis import analyze_correlation_matrix
 filename = 'data/testdata.csv'
 explanations_filename = 'data/variable_explanations.csv'
 NUMPY_SEED = 1234
-enable_correlation_analysis = False # or True
-enable_pca_analysis = False # or True
+enable_correlation_analysis = False  # or True
+enable_pca_analysis = False  # or True
 
-enable_logistic_regression = False # or True
-enable_linear_regression_for_sold = False # or True
+enable_logistic_regression = False  # or True
+enable_linear_regression_for_sold = False  # or True
 enable_random_forest_classifier = True
-enable_gradient_boosting_classifier = False # or True
+enable_gradient_boosting_classifier = False  # or True
 
-enable_linear_regression_for_sales = False # or True
-enable_ridge_regression = False # or True
+enable_linear_regression_for_sales = False  # or True
+enable_ridge_regression = False  # or True
 enable_random_forest_regressor = False or True
-enable_gradient_boosting_regressor = False # or True
+enable_gradient_boosting_regressor = False  # or True
 
 enable_random_forest_regressor_m3 = True
 
@@ -243,7 +243,7 @@ if enable_logistic_regression:
 if enable_random_forest_classifier:
     print('Using randomized search to tune a random forest classifier...')
     # param_dist_rf = {"n_estimators": sp_randint(25, 45)}
-    param_dist_rf = {"n_estimators": [37]} # zero and zero no-padding
+    param_dist_rf = {"n_estimators": [37]}  # zero and zero no-padding
     # param_dist_rf = {"n_estimators": [23]} # mean
     rf = RandomForestClassifier()
     rf_rs = RandomizedSearchCV(rf, n_iter=1, cv=5, n_jobs=20,
@@ -273,10 +273,11 @@ if enable_gradient_boosting_classifier:
     # param_dist_gbc = {"n_estimators": sp_randint(95, 110),
     #                  "max_depth": sp_randint(8, 15),
     #                  "learning_rate": sp_uniform(0.17, 0.35)}
-    param_dist_gbc = {"n_estimators": [102], "max_depth": [10], "learning_rate": [0.24422626]} # zero no-padding
-    #param_dist_gbc = {"n_estimators": [111], "max_depth": [8], "learning_rate": [0.242745]} # zero
+    param_dist_gbc = {"n_estimators": [102], "max_depth": [10], "learning_rate": [0.24422626]}  # zero no-padding
+    # param_dist_gbc = {"n_estimators": [111], "max_depth": [8], "learning_rate": [0.242745]} # zero
     # param_dist_gbc = {"n_estimators": [119], "max_depth": [7], "learning_rate": [0.328158]} # mean
-    # GradientBoostingClassifier best_score: 0.964508496451 best_params: {'n_estimators': 119, 'learning_rate': 0.32815821385475585, 'max_depth': 7}
+    # GradientBoostingClassifier best_score: 0.964508496451 best_params: {'n_estimators': 119,
+    # 'learning_rate': 0.32815821385475585, 'max_depth': 7}
     gbc = GradientBoostingClassifier()
     gbc_rs = RandomizedSearchCV(gbc, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_gbc)
@@ -341,7 +342,7 @@ if enable_linear_regression_for_sales:
 if enable_ridge_regression:
     print('Using randomized search to tune ridge regression...')
     # param_dist_rid = {"alpha": sp_uniform(0.0,0.1)}
-    param_dist_rid = {"alpha": [0.00608446]} # zero no-padding
+    param_dist_rid = {"alpha": [0.00608446]}  # zero no-padding
     # param_dist_rid = {"alpha": [0.0052525]} # zero
     # param_dist_rid = {"alpha": [0.006925]} # mean
     # Ridge best_score: 0.529470507097 best_params: {'alpha': 0.006925342341750873}
@@ -364,7 +365,7 @@ if enable_ridge_regression:
 if enable_random_forest_regressor:
     print('Using randomized search to tune a random forest regressor...')
     # param_dist_rfr = {"max_depth": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]}
-    param_dist_rfr = {"max_depth": [11]} # zero, mean, and zero no-padding
+    param_dist_rfr = {"max_depth": [11]}  # zero, mean, and zero no-padding
     # RandomForestRegressor best_score: 0.824311702267 best_params: {'max_depth': 11}
     rfr = RandomForestRegressor(max_depth=1, random_state=0)
     rfr_rs = RandomizedSearchCV(rfr, n_iter=1, cv=5, n_jobs=20,
@@ -389,10 +390,11 @@ if enable_gradient_boosting_regressor:
                       "learning_rate": sp_uniform(0.5, 0.7)}
     # param_dist_gbr = {"n_estimators": [132], "max_depth": [10], "learning_rate": [0.6060324]} # zero
     # param_dist_gbr = {"n_estimators": [100], "max_depth": [3], "learning_rate": [0.3560849]} # mean
-    # GradientBoostingRegressor best_score: 0.84072146393 best_params: {'n_estimators': 100, 'learning_rate': 0.35608492171567685, 'max_depth': 3}
+    # GradientBoostingRegressor best_score: 0.84072146393 best_params: {'n_estimators': 100,
+    # 'learning_rate': 0.35608492171567685, 'max_depth': 3}
     gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1,
                                     max_depth=40, random_state=0, loss='ls')
-    gbr_rs = RandomizedSearchCV(gbr, n_iter=1, cv=5, n_jobs = 20,
+    gbr_rs = RandomizedSearchCV(gbr, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_gbr)
     gbr_rs.fit(X_m2_train, y_m2_train)
     pred_gbr_train = gbr_rs.predict(X_m2_train)
@@ -420,13 +422,13 @@ test_m3_acc = {}
 if enable_random_forest_regressor_m3:
     print('Using randomized search to tune a random forest regressor...')
     # param_dist_rfr_m3 = {"max_depth": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22]}
-    param_dist_rfr_m3 = {"max_depth": [15]} # zero no-padding
+    param_dist_rfr_m3 = {"max_depth": [15]}  # zero no-padding
     # param_dist_rfr_m3 = {"max_depth": [20]} # zero
     # param_dist_rfr_m3 = {"max_depth": [8]} # mean
     # RandomForestRegressor best_score: 0.638195402073 best_params: {'max_depth': 8}
     rfr_m3 = RandomForestRegressor(max_depth=3, random_state=0)
     rfr_rs_m3 = RandomizedSearchCV(rfr_m3, n_iter=1, cv=5, n_jobs=20,
-                                param_distributions=param_dist_rfr_m3)
+                                   param_distributions=param_dist_rfr_m3)
     rfr_rs_m3.fit(X_m3_train, y_m3_train)
     pred_rfr_train_m3 = rfr_rs_m3.predict(X_m3_train)
     pred_rfr_val_m3 = rfr_rs_m3.predict(X_m3_val)
@@ -462,17 +464,17 @@ print("leads_kept_test:", leads_kept_test)
 
 for classification_method in classification_methods:
     if classification_method == 'rfc':
-        prob_train = prob_rf_train[:,1]
-        prob_val = prob_rf_val[:,1]
-        prob_test = prob_rf_test[:,1]
+        prob_train = prob_rf_train[:, 1]
+        prob_val = prob_rf_val[:, 1]
+        prob_test = prob_rf_test[:, 1]
     elif classification_method == 'logr':
-        prob_train = prob_logr_train[:,1]
-        prob_val = prob_logr_val[:,1]
-        prob_test = prob_logr_test[:,1]
+        prob_train = prob_logr_train[:, 1]
+        prob_val = prob_logr_val[:, 1]
+        prob_test = prob_logr_test[:, 1]
     elif classification_method == 'lr':
-        prob_train = prob_lr_train[:,1]
-        prob_val = prob_lr_val[:,1]
-        prob_test = prob_lr_test[:,1]
+        prob_train = prob_lr_train[:, 1]
+        prob_val = prob_lr_val[:, 1]
+        prob_test = prob_lr_test[:, 1]
     elif classification_method == 'gbc':
         prob_train = prob_gbc_train[:, 1]
         prob_val = prob_gbc_val[:, 1]
@@ -504,13 +506,6 @@ for classification_method in classification_methods:
         expected_sales_val = prob_val * pred_val
         expected_sales_test = prob_test * pred_test
 
-        #print("expected_sales_train:\n", expected_sales_train)
-        #print("expected_sales_train_m3:\n", expected_sales_train_m3)
-        #print("true sales_train:\n", target_sales_all[indices_train])
-        #print("expected_sales_val:\n", expected_sales_val)
-        #print("expected_sales_val_m3:\n", expected_sales_val_m3)
-        #print("true sales_val:\n", target_sales_all[indices_val])
-
         promising_sales_indices_train = np.argsort(expected_sales_train)
         promising_sales_indices_val = np.argsort(expected_sales_val)
         promising_sales_indices_test = np.argsort(expected_sales_test)
@@ -518,14 +513,10 @@ for classification_method in classification_methods:
         top_promising_sales_indices_train = promising_sales_indices_train[-leads_kept_train:]
         top_promising_sales_indices_val = promising_sales_indices_val[-leads_kept_val:]
         top_promising_sales_indices_test = promising_sales_indices_test[-leads_kept_test:]
-        print("len(top_promising_sales_indices_train)=", len(top_promising_sales_indices_train))
-        print("len(top_promising_sales_indices_val)=", len(top_promising_sales_indices_val))
-        print("len(top_promising_sales_indices_test)=", len(top_promising_sales_indices_test))
-
-        #print("top expected_sales_train:\n", expected_sales_train[top_promising_sales_indices_train])
-        #print("correct expected_sales_train:\n", target_sales_all[indices_train][top_promising_sales_indices_train])
-        #print("top expected_sales_val:\n", expected_sales_val[top_promising_sales_indices_val])
-        #print("correct expected_sales_val:\n", target_sales_all[indices_val][top_promising_sales_indices_val])
+        if verbose:
+            print("len(top_promising_sales_indices_train)=", len(top_promising_sales_indices_train))
+            print("len(top_promising_sales_indices_val)=", len(top_promising_sales_indices_val))
+            print("len(top_promising_sales_indices_test)=", len(top_promising_sales_indices_test))
 
         print("classification:", classification_method, "regression:", regression_method)
         e_total_revenue_train_sel = expected_sales_train[top_promising_sales_indices_train].sum()
@@ -539,11 +530,11 @@ for classification_method in classification_methods:
         total_revenue_val_sel = target_sales_all[indices_val][top_promising_sales_indices_val].sum()
         total_revenue_test_sel = target_sales_all[indices_test][top_promising_sales_indices_test].sum()
         print("total_revenue_train_sel", total_revenue_train_sel,
-              '(%f)'%(100 * total_revenue_train_sel/total_revenue_train))
+              '(%f)' % (100 * total_revenue_train_sel/total_revenue_train))
         print("total_revenue_val_sel", total_revenue_val_sel,
-              '(%f)'%(100 * total_revenue_val_sel/total_revenue_val))
+              '(%f)' % (100 * total_revenue_val_sel/total_revenue_val))
         print("total_revenue_test_sel", total_revenue_test_sel,
-              '(%f)'%(100 * total_revenue_test_sel/total_revenue_test))
+              '(%f)' % (100 * total_revenue_test_sel/total_revenue_test))
 
 
 expected_sales_train_m3 = pred_rfr_train_m3
@@ -566,9 +557,12 @@ print("e_total_revenue_test_sel_m3", e_total_revenue_test_sel_m3)
 total_revenue_train_sel_m3 = target_sales_all[indices_train][top_promising_sales_indices_train_m3].sum()
 total_revenue_val_sel_m3 = target_sales_all[indices_val][top_promising_sales_indices_val_m3].sum()
 total_revenue_test_sel_m3 = target_sales_all[indices_test][top_promising_sales_indices_test_m3].sum()
-print("total_revenue_train_sel_m3", total_revenue_train_sel_m3)
-print("total_revenue_val_sel_m3", total_revenue_val_sel_m3)
-print("total_revenue_test_sel_m3", total_revenue_test_sel_m3)
+print("total_revenue_train_sel_m3", total_revenue_train_sel_m3,
+      '(%f)' % (100 * total_revenue_train_sel_m3 / total_revenue_train))
+print("total_revenue_val_sel_m3", total_revenue_val_sel_m3,
+      '(%f)' % (100 * total_revenue_val_sel_m3 / total_revenue_val))
+print("total_revenue_test_sel_m3", total_revenue_test_sel_m3,
+      '(%f)' % (100 * total_revenue_test_sel_m3/total_revenue_test))
 
 # Variable importances
 if verbose:
@@ -580,11 +574,8 @@ var_importances = (rf_rs.best_estimator_.feature_importances_ +
                    rfr_rs.best_estimator_.feature_importances_ +
                    rfr_rs_m3.best_estimator_.feature_importances_) / 3
 var_importances_pd = pd.DataFrame(var_importances,
-                                   index = data_df.columns,
-                                   columns=['importance']).sort_values('importance',
+                                  index = data_df.columns,
+                                  columns=['importance']).sort_values('importance',
                                                                        ascending=False)
 
 print("Variable importances:\n", var_importances_pd)
-
-
-# TODO: use best hyperparameters and repeat training on data (train+val)
