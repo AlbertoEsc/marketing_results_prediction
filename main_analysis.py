@@ -58,22 +58,24 @@ from correlation_analysis import analyze_correlation_matrix
 filename = 'data/testdata.csv'
 explanations_filename = 'data/variable_explanations.csv'
 NUMPY_SEED = 1234
-enable_correlation_analysis = False
-enable_pca_analysis = False
+enable_correlation_analysis = False # or True
+enable_pca_analysis = False # or True
 
 enable_random_forest_classifier = True
 enable_gradient_boosting_classifier = False # or True
 
-enable_ridge_regression = False #or True
+enable_ridge_regression = False # or True
 enable_random_forest_regressor = False or True
-enable_gradient_boosting_regressor = False #or True
+enable_gradient_boosting_regressor = False # or True
+
+enable_random_forest_regressor_m3 = True
 
 # Load data and field explanations (files have been renamed)
 data_df, id_df, target_sold_df, target_sales_df = read_data(filename)
 print(data_df.describe())
 print(target_sold_df.describe())
 print(target_sales_df.describe())
-data_df = remove_nulls(data_df, mode='mean', add_null_columns=True)
+data_df = remove_nulls(data_df, mode='zero', add_null_columns=False)
 
 # print("data_df.columns[50]:", data_df.columns[50])
 # print("data_df.columns[61]:", data_df.columns[61])
@@ -227,9 +229,11 @@ classification_methods.append('logr')
 # M1. RandomForestClassifier
 if enable_random_forest_classifier:
     print('Using randomized search to tune a random forest classifier...')
-    param_dist_rf = {"n_estimators": sp_randint(15, 25)}
+    # param_dist_rf = {"n_estimators": sp_randint(25, 45)}
+    param_dist_rf = {"n_estimators": [37]} # zero and zero no-padding
+    # param_dist_rf = {"n_estimators": [23]} # mean
     rf = RandomForestClassifier()
-    rf_rs = RandomizedSearchCV(rf, n_iter=3, cv=5,
+    rf_rs = RandomizedSearchCV(rf, n_iter=1, cv=5, n_jobs=20,
                                param_distributions=param_dist_rf)
     rf_rs.fit(X_train, y_train)
     pred_rf_train = rf_rs.predict(X_train)
@@ -247,11 +251,15 @@ if enable_random_forest_classifier:
 # M1. GradientBoostingClassifier
 if enable_gradient_boosting_classifier:
     print('Using randomized search to tune a gradient boosting classifier...')
-    param_dist_gbc = {"n_estimators": sp_randint(105, 145),
-                      "max_depth": sp_randint(2,5),
-                      "learning_rate": sp_uniform(0.55, 0.75)}
+    # param_dist_gbc = {"n_estimators": sp_randint(95, 110),
+    #                  "max_depth": sp_randint(8, 15),
+    #                  "learning_rate": sp_uniform(0.17, 0.35)}
+    param_dist_gbc = {"n_estimators": [102], "max_depth": [10], "learning_rate": [0.24422626]} # zero no-padding
+    #param_dist_gbc = {"n_estimators": [111], "max_depth": [8], "learning_rate": [0.242745]} # zero
+    # param_dist_gbc = {"n_estimators": [119], "max_depth": [7], "learning_rate": [0.328158]} # mean
+    # GradientBoostingClassifier best_score: 0.964508496451 best_params: {'n_estimators': 119, 'learning_rate': 0.32815821385475585, 'max_depth': 7}
     gbc = GradientBoostingClassifier()
-    gbc_rs = RandomizedSearchCV(gbc, n_iter=1, cv=5,
+    gbc_rs = RandomizedSearchCV(gbc, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_gbc)
     gbc_rs.fit(X_train, y_train)
     pred_gbc_train = gbc_rs.predict(X_train)
@@ -300,9 +308,13 @@ regression_methods.append('lr')
 # M2. Ridge regression
 if enable_ridge_regression:
     print('Using randomized search to tune ridge regression...')
-    param_dist_rid = {"alpha": sp_uniform(0,3)}
+    # param_dist_rid = {"alpha": sp_uniform(0.0,0.1)}
+    param_dist_rid = {"alpha": [0.00608446]} # zero no-padding
+    # param_dist_rid = {"alpha": [0.0052525]} # zero
+    # param_dist_rid = {"alpha": [0.006925]} # mean
+    # Ridge best_score: 0.529470507097 best_params: {'alpha': 0.006925342341750873}
     rid = Ridge(alpha=0.125, normalize=True)
-    rid_rs = RandomizedSearchCV(rid, n_iter=3, cv=5,
+    rid_rs = RandomizedSearchCV(rid, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_rid)
     rid_rs.fit(X_m2_train, y_m2_train)
     pred_rid_train = rid_rs.predict(X_m2_train)
@@ -316,9 +328,11 @@ if enable_ridge_regression:
 # M2. RandomForestRegressor
 if enable_random_forest_regressor:
     print('Using randomized search to tune a random forest regressor...')
-    param_dist_rfr = {"max_depth": [1, 2, 3, 4, 5]}
-    rfr = RandomForestRegressor(max_depth=3, random_state=0)
-    rfr_rs = RandomizedSearchCV(rfr, n_iter=5, cv=5,
+    # param_dist_rfr = {"max_depth": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]}
+    param_dist_rfr = {"max_depth": [11]} # zero, mean, and zero no-padding
+    # RandomForestRegressor best_score: 0.824311702267 best_params: {'max_depth': 11}
+    rfr = RandomForestRegressor(max_depth=1, random_state=0)
+    rfr_rs = RandomizedSearchCV(rfr, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_rfr)
     rfr_rs.fit(X_m2_train, y_m2_train)
     pred_rfr_train = rfr_rs.predict(X_m2_train)
@@ -332,12 +346,15 @@ if enable_random_forest_regressor:
 # M2. GradientBoostingRegressor
 if enable_gradient_boosting_regressor:
     print('Using randomized search to tune a gradient boosting regressor...')
-    param_dist_gbr = {"n_estimators": sp_randint(50, 110),
-                      "max_depth": sp_randint(1, 3),
-                      "learning_rate": sp_uniform(0.05, 0.25)}
+    param_dist_gbr = {"n_estimators": sp_randint(30, 55),
+                      "max_depth": sp_randint(9, 12),
+                      "learning_rate": sp_uniform(0.5, 0.7)}
+    # param_dist_gbr = {"n_estimators": [132], "max_depth": [10], "learning_rate": [0.6060324]} # zero
+    # param_dist_gbr = {"n_estimators": [100], "max_depth": [3], "learning_rate": [0.3560849]} # mean
+    # GradientBoostingRegressor best_score: 0.84072146393 best_params: {'n_estimators': 100, 'learning_rate': 0.35608492171567685, 'max_depth': 3}
     gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1,
-                                    max_depth=1, random_state=0, loss='ls')
-    gbr_rs = RandomizedSearchCV(gbr, n_iter=1, cv=5,
+                                    max_depth=40, random_state=0, loss='ls')
+    gbr_rs = RandomizedSearchCV(gbr, n_iter=1, cv=5, n_jobs = 20,
                                 param_distributions=param_dist_gbr)
     gbr_rs.fit(X_m2_train, y_m2_train)
     pred_gbr_train = gbr_rs.predict(X_m2_train)
@@ -357,13 +374,16 @@ print(res_sales_df)
 
 # Third model (M3). Direct computation of expected return
 # M3. RandomForestRegressor
-enable_random_forest_regressor_m3 = True
 test_m3_acc = {}
 if enable_random_forest_regressor_m3:
     print('Using randomized search to tune a random forest regressor...')
-    param_dist_rfr_m3 = {"max_depth": [1, 2, 3, 4, 5]}
+    # param_dist_rfr_m3 = {"max_depth": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22]}
+    param_dist_rfr_m3 = {"max_depth": [15]} # zero no-padding
+    # param_dist_rfr_m3 = {"max_depth": [20]} # zero
+    # param_dist_rfr_m3 = {"max_depth": [8]} # mean
+    # RandomForestRegressor best_score: 0.638195402073 best_params: {'max_depth': 8}
     rfr_m3 = RandomForestRegressor(max_depth=3, random_state=0)
-    rfr_rs_m3 = RandomizedSearchCV(rfr_m3, n_iter=5, cv=5,
+    rfr_rs_m3 = RandomizedSearchCV(rfr_m3, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_rfr_m3)
     rfr_rs_m3.fit(X_m3_train, y_m3_train)
     pred_rfr_train_m3 = rfr_rs_m3.predict(X_m3_train)
@@ -420,7 +440,7 @@ for classification_method in classification_methods:
             pred_val = rfr_rs.predict(X_val)
         elif regression_method == 'gbr':
             pred_train = gbr_rs.predict(X_train)
-            pred_val = bgr_rs.predict(X_val)
+            pred_val = gbr_rs.predict(X_val)
         else:
             raise ValueError('Unknown regression_method:', regression_method)
 
@@ -473,12 +493,6 @@ total_revenue_train_sel_m3 = target_sales_all[indices_train][top_promising_sales
 total_revenue_val_sel_m3 = target_sales_all[indices_val][top_promising_sales_indices_val_m3].sum()
 print("total_revenue_train_sel_m3", total_revenue_train_sel_m3)
 print("total_revenue_val_sel_m3", total_revenue_val_sel_m3)
-
-
-# TODO: Create module for data_loading
-# TODO: Add baseline model for target_sales
-# TODO: Add more algorithms
-# TODO: Hyperparameter search
 
 
 # TODO: use best hyperparameters and repeat training on data (train+val)

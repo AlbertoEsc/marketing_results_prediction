@@ -25,6 +25,8 @@ def remove_nulls(data, mode="mean", add_null_columns=False):
         # print("data.mean()", data.mean())
     elif mode == "median":
         substitute = data.median()
+    elif mode == 'zero':
+        substitute = 0.0 * data.mean()
     else:
         raise ValueError("invalid mode:" + str(mode))
     print("substitute:\n", substitute)

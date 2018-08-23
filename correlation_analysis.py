@@ -28,9 +28,9 @@ def analyze_correlation_matrix(sold_df, sales_df, data_df):
     plt.title('Feature Correlations')
     labels= [str(column) for column in all_data_df.columns]
     print("labels:", labels)
-    plt.xticks(range(len(labels)), labels)
+    #plt.xticks(range(len(labels)), labels)
     plt.yticks(range(len(labels)), labels)
-    fig.colorbar()
+    fig.colorbar(cax)
     # fig.colorbar(cax, ticks=[0.0, 0.25, 0.5, .75, 1.0])
     plt.show()
 
