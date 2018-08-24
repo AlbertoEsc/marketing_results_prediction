@@ -32,6 +32,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.svm import SVR
 # Classification/ensemble algorithms
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
@@ -41,7 +42,7 @@ from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
-
+from sklearn.svm import SVC
 import matplotlib.pyplot as plt
 
 from data_loading import read_data
@@ -64,11 +65,13 @@ enable_logistic_regression = False  # or True
 enable_linear_regression_for_sold = False  # or True
 enable_random_forest_classifier = True
 enable_gradient_boosting_classifier = False  # or True
+enable_support_vector_classifier = False   or True
 
 enable_linear_regression_for_sales = False  # or True
 enable_ridge_regression = False  # or True
 enable_random_forest_regressor = False or True
 enable_gradient_boosting_regressor = False  # or True
+enable_support_vector_regressor = False or True
 
 enable_random_forest_regressor_m3 = True
 
@@ -335,6 +338,39 @@ if enable_gradient_boosting_classifier:
           "best_params:", gbc_rs.best_params_)
     classification_methods.append('gbc')
 
+# M1. SVC (support vector machine / classification)
+if enable_support_vector_classifier:
+    print('Using randomized search to tune a support vector classifier...')
+    param_dist_svc = {"C": [2.0**k for k in np.arange(-18, 18)]}
+
+    svc = SVC(kernel='rbf', probability=False)
+    svc_rs = RandomizedSearchCV(svc, n_iter=35, cv=5, n_jobs=20,
+                                param_distributions=param_dist_svc)
+    svc_rs.fit(X_train, y_train)
+    pred_svc_train = svc_rs.predict(X_train)
+    pred_svc_val = svc_rs.predict(X_val)
+    pred_svc_test = svc_rs.predict(X_test)
+    prob_svc_train = svc_rs.predict_proba(X_train)
+    prob_svc_val = svc_rs.predict_proba(X_val)
+    prob_svc_test = svc_rs.predict_proba(X_tetst)
+    test_acc[('SVC_CR', 'train')] = \
+        accuracy_score(y_train, pred_svc_train)
+    test_acc[('SVC_CR', 'val')] = \
+        accuracy_score(y_val, pred_svc_val)
+    test_acc[('SVC_CE', 'train')] = \
+        cross_entropy(y_train, pred_svc_train)
+    test_acc[('SVC_CE', 'val')] = \
+        cross_entropy(y_val, pred_svc_val)
+    if evaluate_test_data:
+        test_acc[('SVC_CR', 'test')] = \
+            accuracy_score(y_test, pred_svc_test)
+        test_acc[('SVC_CE', 'test')] = \
+            cross_entropy(y_test, pred_svc_test)
+
+    print("SVC best_score:", svc_rs.best_score_,
+          "best_params:", svc_rs.best_params_)
+    classification_methods.append('svc')
+
 print(test_acc)
 
 res_sold_df = pd.DataFrame()
@@ -448,6 +484,28 @@ if enable_gradient_boosting_regressor:
     print("GradientBoostingRegressor best_score:", gbr_rs.best_score_,
           "best_params:", gbr_rs.best_params_)
     regression_methods.append('gbr')
+
+# M2. Support Vector Regression
+if enable_support_vector_regressor:
+    print('Using randomized search to tune a support vector regressor...')
+    param_dist_svr = {"C": [2.0**k for k in np.arange(-18, 18)],
+                      "epsilon": [2.0**k for k in np.arange(-3, 3)]}
+    svr = SVR(kernel='rbf')
+    svr_rs = RandomizedSearchCV(svr, n_iter=35, cv=5, n_jobs=20, param_distributions=param_dist_svr)
+    svr_rs.fit(X_m2_train, y_m2_train)
+    pred_svr_train = svr_rs.predict(X_m2_train)
+    pred_svr_val = svr_rs.predict(X_m2_val)
+    pred_svr_test = svr_rs.predict(X_m2_test)
+    test_m2_acc[('SVR_MSE', 'train')] = \
+        mean_squared_error(y_m2_train, pred_svr_train)
+    test_m2_acc[('SVR_MSE', 'val')] = \
+        mean_squared_error(y_m2_val, pred_svr_val)
+    if evaluate_test_data:
+        test_m2_acc[('SVR_MSE', 'test')] = \
+            mean_squared_error(y_m2_test, pred_svr_test)
+    print("SVR best_score:", svr_rs.best_score_,
+          "best_params:", svr_rs.best_params_)
+    regression_methods.append('svr')
 
 res_sales_df = pd.DataFrame()
 for (alg, test_set) in test_m2_acc.keys():
