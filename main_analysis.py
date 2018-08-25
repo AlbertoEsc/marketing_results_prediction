@@ -61,22 +61,23 @@ NUMPY_SEED = 1234
 enable_correlation_analysis = False  # or True
 enable_pca_analysis = False  # or True
 
-enable_logistic_regression = False  # or True
-enable_linear_regression_for_sold = False  # or True
+enable_logistic_regression = False 
+enable_linear_regression_for_sold = False 
 enable_random_forest_classifier = True
-enable_gradient_boosting_classifier = False  # or True
-enable_support_vector_classifier = False   or True
+enable_gradient_boosting_classifier = False 
+enable_support_vector_classifier = False 
 
-enable_linear_regression_for_sales = False  # or True
-enable_ridge_regression = False  # or True
-enable_random_forest_regressor = False or True
-enable_gradient_boosting_regressor = False  # or True
-enable_support_vector_regressor = False or True
+enable_linear_regression_for_sales = False 
+enable_ridge_regression = False 
+enable_random_forest_regressor = True
+enable_gradient_boosting_regressor = False 
+enable_support_vector_regressor = False 
 
 enable_random_forest_regressor_m3 = True
+enable_support_vector_regressor_m3 = True
 
 verbose = False
-evaluate_test_data = True
+evaluate_test_data =  False # or True
 
 # Load data and field explanations (files have been renamed)
 data_df, id_df, target_sold_df, target_sales_df = read_data(filename)
@@ -267,7 +268,8 @@ if enable_logistic_regression:
 # M1. RandomForestClassifier
 if enable_random_forest_classifier:
     print('Using randomized search to tune a random forest classifier...')
-    # param_dist_rf = {"n_estimators": sp_randint(25, 45)}
+    #param_dist_rf = {"n_estimators": sp_randint(30, 40), 
+    #        "max_depth": [None, 20, 23, 25, 27, ]}
     param_dist_rf = {"n_estimators": [37]}  # zero and zero no-padding
     # param_dist_rf = {"n_estimators": [23]} # mean
     rf = RandomForestClassifier()
@@ -319,7 +321,7 @@ if enable_gradient_boosting_classifier:
     pred_gbc_test = gbc_rs.predict(X_test)
     prob_gbc_train = gbc_rs.predict_proba(X_train)
     prob_gbc_val = gbc_rs.predict_proba(X_val)
-    prob_gbc_test = gbc_rs.predict_proba(X_tetst)
+    prob_gbc_test = gbc_rs.predict_proba(X_test)
     test_acc[('GradientBoostingClassifier_CR', 'train')] = \
         accuracy_score(y_train, pred_gbc_train)
     test_acc[('GradientBoostingClassifier_CR', 'val')] = \
@@ -341,10 +343,14 @@ if enable_gradient_boosting_classifier:
 # M1. SVC (support vector machine / classification)
 if enable_support_vector_classifier:
     print('Using randomized search to tune a support vector classifier...')
-    param_dist_svc = {"C": [2.0**k for k in np.arange(-18, 18)]}
-
-    svc = SVC(kernel='rbf', probability=False)
-    svc_rs = RandomizedSearchCV(svc, n_iter=35, cv=5, n_jobs=20,
+    # param_dist_svc = {"C": [2.0**k for k in np.arange(2, 5, 0.1)], 
+    #        'gamma': sp_uniform(0.03, 0.04)}
+    param_dist_svc = {"C": [12.996], 'gamma': [0.03562]}
+    # SVC best_score: 0.943213594321 best_params: {'C': 12.99603834169977, 'gamma': 0.03562230562818298}
+    # param_dist_svc = {"C": [32]}
+    # SVC best_score: 0.941277694128 best_params: {'C': 32}, zero, no-padding
+    svc = SVC(kernel='rbf', probability=True)
+    svc_rs = RandomizedSearchCV(svc, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_svc)
     svc_rs.fit(X_train, y_train)
     pred_svc_train = svc_rs.predict(X_train)
@@ -352,7 +358,7 @@ if enable_support_vector_classifier:
     pred_svc_test = svc_rs.predict(X_test)
     prob_svc_train = svc_rs.predict_proba(X_train)
     prob_svc_val = svc_rs.predict_proba(X_val)
-    prob_svc_test = svc_rs.predict_proba(X_tetst)
+    prob_svc_test = svc_rs.predict_proba(X_test)
     test_acc[('SVC_CR', 'train')] = \
         accuracy_score(y_train, pred_svc_train)
     test_acc[('SVC_CR', 'val')] = \
@@ -488,10 +494,16 @@ if enable_gradient_boosting_regressor:
 # M2. Support Vector Regression
 if enable_support_vector_regressor:
     print('Using randomized search to tune a support vector regressor...')
-    param_dist_svr = {"C": [2.0**k for k in np.arange(-18, 18)],
-                      "epsilon": [2.0**k for k in np.arange(-3, 3)]}
+    # param_dist_svr = {"C": [2.0**k for k in np.arange(18, 20, 0.1)],
+    #        'gamma': sp_uniform(0.19, 0.03),
+    #        "epsilon": sp_uniform(1.4, 0.4)}
+    #param_dist_svr = {"C": [691802], 'gamma': [0.194720],
+    #        "epsilon":[1.4253616]}
+    #SVR best_score: 0.736684495686 best_params: {'epsilon': 1.425361602175401, 'C': 691802.1635233087, 'gamma': 0.1947206879933659}
+    param_dist_svr = {"C": [2.0**18.2], "epsilon": [2.2150127]}
+    # SVR best_score: 0.844215154692 best_params: {'epsilon': 2.2150127431750146, 'C': 301124.3815723463}
     svr = SVR(kernel='rbf')
-    svr_rs = RandomizedSearchCV(svr, n_iter=35, cv=5, n_jobs=20, param_distributions=param_dist_svr)
+    svr_rs = RandomizedSearchCV(svr, n_iter=1, cv=5, n_jobs=20, param_distributions=param_dist_svr)
     svr_rs.fit(X_m2_train, y_m2_train)
     pred_svr_train = svr_rs.predict(X_m2_train)
     pred_svr_val = svr_rs.predict(X_m2_val)
@@ -513,10 +525,11 @@ for (alg, test_set) in test_m2_acc.keys():
 print(res_sales_df)
 
 # Third model (M3). Direct computation of expected return
-# M3. RandomForestRegressor
+regression_methods_m3 = []
 test_m3_acc = {}
+# M3. RandomForestRegressor
 if enable_random_forest_regressor_m3:
-    print('Using randomized search to tune a random forest regressor...')
+    print('Using randomized search to tune a random forest regressor (M3)...')
     # param_dist_rfr_m3 = {"max_depth": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
     # 11, 12, 13, 14, 15, 16, 18, 20, 22]}
     param_dist_rfr_m3 = {"max_depth": [15]}  # zero no-padding
@@ -539,6 +552,34 @@ if enable_random_forest_regressor_m3:
             mean_squared_error(y_m3_test, pred_rfr_test_m3)
     print("RandomForestRegressor best_score:", rfr_rs_m3.best_score_,
           "best_params:", rfr_rs_m3.best_params_)
+    regression_methods_m3.append('rfr')
+
+# M3. Support Vector Regression
+if enable_support_vector_regressor_m3:
+    print('Using randomized search to tune a support vector regressor (M3)...')
+    # param_dist_svr_m3 = {"C": [2.0**k for k in np.arange(17, 18, 0.1)],
+    #        'gamma': sp_uniform(0.00005, 0.0001),
+    #        "epsilon": sp_uniform(0.45, 0.2)}
+    param_dist_svr_m3 = {"C": [244589], "epsilon": [0.5315116], 'gamma': [0.00012]}
+    # SVR best_score: 0.767954337244 best_params: {'epsilon': 0.5315115872222275, 'C': 244589.00053342702, 'gamma': 0.000119908712214389}
+    svr_m3 = SVR(kernel='rbf')
+    svr_rs_m3 = RandomizedSearchCV(svr_m3, n_iter=1, cv=5, n_jobs=20,
+                                   param_distributions=param_dist_svr_m3)
+    svr_rs_m3.fit(X_m3_train, y_m3_train)
+    pred_svr_train_m3 = svr_rs_m3.predict(X_m3_train)
+    pred_svr_val_m3 = svr_rs_m3.predict(X_m3_val)
+    pred_svr_test_m3 = svr_rs_m3.predict(X_m3_test)
+    test_m3_acc[('SVR_MSE', 'train')] = \
+        mean_squared_error(y_m3_train, pred_svr_train_m3)
+    test_m3_acc[('SVR_MSE', 'val')] = \
+        mean_squared_error(y_m3_val, pred_svr_val_m3)
+    if evaluate_test_data:
+        test_m3_acc[('SVR_MSE', 'test')] = \
+            mean_squared_error(y_m3_test, pred_svr_test_m3)
+    print("SVR best_score:", svr_rs_m3.best_score_,
+          "best_params:", svr_rs_m3.best_params_)
+    regression_methods_m3.append('svr')
+
 res_sales_m3_df = pd.DataFrame()
 for (alg, test_set) in test_m3_acc.keys():
     print('alg:', alg, 'test_set:', test_set)
@@ -555,8 +596,6 @@ print("total_revenue_val", total_revenue_val)
 if evaluate_test_data:
     print("total_revenue_test", total_revenue_test)
 
-classification_method = 'rfc'
-regression_method = 'rfr'
 leads_kept_train = np.rint(0.40 * len(X_train)).astype(int)
 leads_kept_val = np.rint(0.40 * len(X_val)).astype(int)
 leads_kept_test = np.rint(0.40 * len(X_test)).astype(int)
@@ -581,6 +620,10 @@ for classification_method in classification_methods:
         prob_train = prob_gbc_train[:, 1]
         prob_val = prob_gbc_val[:, 1]
         prob_test = prob_gbc_test[:, 1]
+    elif classification_method == 'svc':
+        prob_train = prob_svc_train[:, 1]
+        prob_val = prob_svc_val[:, 1]
+        prob_test = prob_svc_test[:, 1]
     else:
         raise ValueError('Unknown classification_method:',
                          classification_method)
@@ -602,6 +645,10 @@ for classification_method in classification_methods:
             pred_train = gbr_rs.predict(X_train)
             pred_val = gbr_rs.predict(X_val)
             pred_test = gbr_rs.predict(X_test)
+        elif regression_method == 'svr':
+            pred_train = svr_rs.predict(X_train)
+            pred_val = svr_rs.predict(X_val)
+            pred_test = svr_rs.predict(X_test)
         else:
             raise ValueError('Unknown regression_method:', regression_method)
 
@@ -625,9 +672,10 @@ for classification_method in classification_methods:
         e_total_revenue_train_sel = expected_sales_train[top_promising_sales_indices_train].sum()
         e_total_revenue_val_sel = expected_sales_val[top_promising_sales_indices_val].sum()
         e_total_revenue_test_sel = expected_sales_test[top_promising_sales_indices_test].sum()
-        print("e_total_revenue_train_sel", e_total_revenue_train_sel)
-        print("e_total_revenue_val_sel", e_total_revenue_val_sel)
-        print("e_total_revenue_test_sel", e_total_revenue_test_sel)
+        if verbose:
+            print("e_total_revenue_train_sel", e_total_revenue_train_sel)
+            print("e_total_revenue_val_sel", e_total_revenue_val_sel)
+            print("e_total_revenue_test_sel", e_total_revenue_test_sel)
 
         total_revenue_train_sel = target_sales_all[indices_train][top_promising_sales_indices_train].sum()
         total_revenue_val_sel = target_sales_all[indices_val][top_promising_sales_indices_val].sum()
@@ -639,33 +687,43 @@ for classification_method in classification_methods:
         print("total_revenue_test_sel", total_revenue_test_sel,
               '(%f)' % (100 * total_revenue_test_sel/total_revenue_test))
 
+for regression_method in regression_methods_m3:
+    if regression_method == 'rfr':
+        expected_sales_train_m3 = pred_rfr_train_m3
+        expected_sales_val_m3 = pred_rfr_val_m3
+        expected_sales_test_m3 = pred_rfr_test_m3
+    elif regression_method == 'svr':
+        expected_sales_train_m3 = pred_svr_train_m3
+        expected_sales_val_m3 = pred_svr_val_m3
+        expected_sales_test_m3 = pred_svr_test_m3
+    else:
+        raise ValueError('Unknown regression_method:', regression_method)
 
-expected_sales_train_m3 = pred_rfr_train_m3
-expected_sales_val_m3 = pred_rfr_val_m3
-expected_sales_test_m3 = pred_rfr_test_m3
-promising_sales_indices_train_m3 = np.argsort(expected_sales_train_m3)
-promising_sales_indices_val_m3 = np.argsort(expected_sales_val_m3)
-promising_sales_indices_test_m3 = np.argsort(expected_sales_test_m3)
-top_promising_sales_indices_train_m3 = promising_sales_indices_train_m3[-leads_kept_train:]
-top_promising_sales_indices_val_m3 = promising_sales_indices_val_m3[-leads_kept_val:]
-top_promising_sales_indices_test_m3 = promising_sales_indices_test_m3[-leads_kept_test:]
+    print('regression method (M3):', regression_method)
+    promising_sales_indices_train_m3 = np.argsort(expected_sales_train_m3)
+    promising_sales_indices_val_m3 = np.argsort(expected_sales_val_m3)
+    promising_sales_indices_test_m3 = np.argsort(expected_sales_test_m3)
+    top_promising_sales_indices_train_m3 = promising_sales_indices_train_m3[-leads_kept_train:]
+    top_promising_sales_indices_val_m3 = promising_sales_indices_val_m3[-leads_kept_val:]
+    top_promising_sales_indices_test_m3 = promising_sales_indices_test_m3[-leads_kept_test:]
+    
+    e_total_revenue_train_sel_m3 = expected_sales_train_m3[top_promising_sales_indices_train_m3].sum()
+    e_total_revenue_val_sel_m3 = expected_sales_val_m3[top_promising_sales_indices_val_m3].sum()
+    e_total_revenue_test_sel_m3 = expected_sales_test_m3[top_promising_sales_indices_test_m3].sum()
+    if verbose:
+        print("e_total_revenue_train_sel_m3", e_total_revenue_train_sel_m3)
+        print("e_total_revenue_val_sel_m3", e_total_revenue_val_sel_m3)
+        print("e_total_revenue_test_sel_m3", e_total_revenue_test_sel_m3)
 
-e_total_revenue_train_sel_m3 = expected_sales_train_m3[top_promising_sales_indices_train_m3].sum()
-e_total_revenue_val_sel_m3 = expected_sales_val_m3[top_promising_sales_indices_val_m3].sum()
-e_total_revenue_test_sel_m3 = expected_sales_test_m3[top_promising_sales_indices_test_m3].sum()
-print("e_total_revenue_train_sel_m3", e_total_revenue_train_sel_m3)
-print("e_total_revenue_val_sel_m3", e_total_revenue_val_sel_m3)
-print("e_total_revenue_test_sel_m3", e_total_revenue_test_sel_m3)
-
-total_revenue_train_sel_m3 = target_sales_all[indices_train][top_promising_sales_indices_train_m3].sum()
-total_revenue_val_sel_m3 = target_sales_all[indices_val][top_promising_sales_indices_val_m3].sum()
-total_revenue_test_sel_m3 = target_sales_all[indices_test][top_promising_sales_indices_test_m3].sum()
-print("total_revenue_train_sel_m3", total_revenue_train_sel_m3,
-      '(%f)' % (100 * total_revenue_train_sel_m3 / total_revenue_train))
-print("total_revenue_val_sel_m3", total_revenue_val_sel_m3,
-      '(%f)' % (100 * total_revenue_val_sel_m3 / total_revenue_val))
-print("total_revenue_test_sel_m3", total_revenue_test_sel_m3,
-      '(%f)' % (100 * total_revenue_test_sel_m3/total_revenue_test))
+    total_revenue_train_sel_m3 = target_sales_all[indices_train][top_promising_sales_indices_train_m3].sum()
+    total_revenue_val_sel_m3 = target_sales_all[indices_val][top_promising_sales_indices_val_m3].sum()
+    total_revenue_test_sel_m3 = target_sales_all[indices_test][top_promising_sales_indices_test_m3].sum()
+    print("total_revenue_train_sel_m3", total_revenue_train_sel_m3,
+          '(%f)' % (100 * total_revenue_train_sel_m3 / total_revenue_train))
+    print("total_revenue_val_sel_m3", total_revenue_val_sel_m3,
+          '(%f)' % (100 * total_revenue_val_sel_m3 / total_revenue_val))
+    print("total_revenue_test_sel_m3", total_revenue_test_sel_m3,
+          '(%f)' % (100 * total_revenue_test_sel_m3/total_revenue_test))
 
 # Variable importances
 if verbose:
