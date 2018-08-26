@@ -58,7 +58,7 @@ from correlation_analysis import analyze_correlation_matrix
 filename = 'data/testdata.csv'
 explanations_filename = 'data/variable_explanations.csv'
 NUMPY_SEED = 1234
-enable_correlation_analysis = False  # or True
+enable_correlation_analysis = False or True
 enable_pca_analysis = False  # or True
 
 enable_logistic_regression = False 
@@ -74,10 +74,11 @@ enable_gradient_boosting_regressor = False
 enable_support_vector_regressor = False 
 
 enable_random_forest_regressor_m3 = True
-enable_support_vector_regressor_m3 = True
+enable_support_vector_regressor_m3 = False
 
 verbose = False
 evaluate_test_data =  False # or True
+enable_efficiency_plot = True
 
 # Load data and field explanations (files have been renamed)
 data_df, id_df, target_sold_df, target_sales_df = read_data(filename)
@@ -497,9 +498,9 @@ if enable_support_vector_regressor:
     # param_dist_svr = {"C": [2.0**k for k in np.arange(18, 20, 0.1)],
     #        'gamma': sp_uniform(0.19, 0.03),
     #        "epsilon": sp_uniform(1.4, 0.4)}
-    #param_dist_svr = {"C": [691802], 'gamma': [0.194720],
+    # param_dist_svr = {"C": [691802], 'gamma': [0.194720],
     #        "epsilon":[1.4253616]}
-    #SVR best_score: 0.736684495686 best_params: {'epsilon': 1.425361602175401, 'C': 691802.1635233087, 'gamma': 0.1947206879933659}
+    # SVR best_score: 0.736684495686 best_params: {'epsilon': 1.425361602175401, 'C': 691802.1635233087, 'gamma': 0.1947206879933659}
     param_dist_svr = {"C": [2.0**18.2], "epsilon": [2.2150127]}
     # SVR best_score: 0.844215154692 best_params: {'epsilon': 2.2150127431750146, 'C': 301124.3815723463}
     svr = SVR(kernel='rbf')
@@ -686,6 +687,25 @@ for classification_method in classification_methods:
               '(%f)' % (100 * total_revenue_val_sel/total_revenue_val))
         print("total_revenue_test_sel", total_revenue_test_sel,
               '(%f)' % (100 * total_revenue_test_sel/total_revenue_test))
+
+        cum_sum = target_sales_all[indices_val][promising_sales_indices_val[::-1]].cumsum()
+        efficiency = 100 * cum_sum / total_revenue_val
+        fraction = 100 * np.arange(1, len(cum_sum)+1) / len(indices_val)
+        if enable_efficiency_plot:
+            fig = plt.figure()
+            ax1 = fig.add_subplot(111)
+            # plt.title('Efficiency')
+            plt.ylim(0, 100)
+            plt.xlim(0, 100)
+            plt.plot(fraction, efficiency)
+            plt.xlabel('Percentage of leads kept')
+            plt.ylabel('Percentage of sales')
+            plt.grid(True)
+            # plt.xticks(range(len(labels)), labels)
+            # plt.yticks(range(len(labels)), labels)
+            # fig.colorbar(cax)
+            # fig.colorbar(cax, ticks=[0.0, 0.25, 0.5, .75, 1.0])
+            plt.show()
 
 for regression_method in regression_methods_m3:
     if regression_method == 'rfr':

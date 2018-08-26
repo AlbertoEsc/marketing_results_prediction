@@ -23,7 +23,9 @@ def analyze_correlation_matrix(sold_df, sales_df, data_df):
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
     cmap = cm.get_cmap('jet', 30)
-    cax = ax1.imshow(all_data_df.corr(), interpolation="nearest", cmap=cmap)
+    corr = all_data_df.corr()
+    cax = ax1.imshow(corr, interpolation="nearest", cmap=cmap)
+    print("First correlations:", corr.values[0:3,0:3])
     ax1.grid(True)
     plt.title('Feature Correlations')
     labels= [str(column) for column in all_data_df.columns]
