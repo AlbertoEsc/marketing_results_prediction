@@ -58,7 +58,7 @@ from correlation_analysis import analyze_correlation_matrix
 filename = 'data/testdata.csv'
 explanations_filename = 'data/variable_explanations.csv'
 NUMPY_SEED = 1234
-enable_correlation_analysis = False or True
+enable_correlation_analysis = False # or True
 enable_pca_analysis = False  # or True
 
 enable_logistic_regression = False 
@@ -73,19 +73,20 @@ enable_random_forest_regressor = True
 enable_gradient_boosting_regressor = False 
 enable_support_vector_regressor = False 
 
-enable_random_forest_regressor_m3 = True
+enable_random_forest_regressor_m3 = False or True
 enable_support_vector_regressor_m3 = False
 
 verbose = False
-evaluate_test_data =  False # or True
-enable_efficiency_plot = True
+evaluate_test_data = False # or True
+enable_efficiency_plot = False
 
 # Load data and field explanations (files have been renamed)
 data_df, id_df, target_sold_df, target_sales_df = read_data(filename)
 print(data_df.describe())
 print(target_sold_df.describe())
 print(target_sales_df.describe())
-data_df = remove_nulls(data_df, mode='zero', add_null_columns=False)
+data_df = remove_nulls(data_df, mode='median', add_null_columns=False)
+# mode='zero'
 
 # print("data_df.columns[50]:", data_df.columns[50])
 # print("data_df.columns[61]:", data_df.columns[61])
@@ -276,6 +277,10 @@ if enable_random_forest_classifier:
     rf = RandomForestClassifier()
     rf_rs = RandomizedSearchCV(rf, n_iter=1, cv=5, n_jobs=20,
                                param_distributions=param_dist_rf)
+    rf.fit(X_train, y_train)
+    #
+    #
+    #
     rf_rs.fit(X_train, y_train)
     pred_rf_train = rf_rs.predict(X_train)
     pred_rf_val = rf_rs.predict(X_val)

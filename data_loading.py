@@ -6,6 +6,7 @@ import csv
 import pandas as pd
 import numpy as np
 
+
 def read_data(filename):
     data = pd.read_csv(filename, decimal=',', sep=';')
     # print("data.head()\n", data.head())

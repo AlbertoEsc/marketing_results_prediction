@@ -13,7 +13,7 @@ from __future__ import division
 import copy
 
 import pandas as pd
-
+import numpy as np
 
 def remove_nulls(data, mode="mean", add_null_columns=False, verbose=False):
     data = copy.deepcopy(data)
@@ -21,7 +21,9 @@ def remove_nulls(data, mode="mean", add_null_columns=False, verbose=False):
     if verbose:
         print("data_null:\n", data_null)
 
-    if mode == "mean":
+    if mode == "none":
+        substitute = np.nan
+    elif mode == "mean":
         substitute = data.mean() # column-wise by default
     elif mode == "median":
         substitute = data.median()
@@ -29,11 +31,13 @@ def remove_nulls(data, mode="mean", add_null_columns=False, verbose=False):
         substitute = 0.0 * data.mean()
     else:
         raise ValueError("invalid mode:" + str(mode))
+
     print("Feature substitutions for null entries:\n", substitute)
 
-    columns = data.columns
-    for column in columns:
-        data.loc[data_null[column], column] = substitute[column]
+    if mode != "none":
+        columns = data.columns
+        for column in columns:
+            data.loc[data_null[column], column] = substitute[column]
 
     if add_null_columns:
         for column in columns:
