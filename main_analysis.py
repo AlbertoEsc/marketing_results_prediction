@@ -57,7 +57,9 @@ from correlation_analysis import analyze_correlation_matrix
 # the whole analysis are executed
 filename = 'data/testdata.csv'
 explanations_filename = 'data/variable_explanations.csv'
-NUMPY_SEED = 1234
+NUMPY_SEED = 12345
+enable_feature_selection = True
+enable_histograms = False
 enable_correlation_analysis = False # or True
 enable_pca_analysis = False  # or True
 
@@ -85,7 +87,49 @@ data_df, id_df, target_sold_df, target_sales_df = read_data(filename)
 print(data_df.describe())
 print(target_sold_df.describe())
 print(target_sales_df.describe())
-data_df = remove_nulls(data_df, mode='median', add_null_columns=False)
+
+if enable_feature_selection:
+    all_variables = ['Cre_Val_12M', 'No_List_T7_1M', 'Cre_Val_6M',
+                     'No_List_STST_6M', 'No_Act_Ph_1M', 'Inv_Days_6M',
+                     'MISC_Days_Since_Last_Offer', 'Offer_days_1M',
+                     'No_Act_3M', 'Cre_Val_1M',
+                     'MISC_Days_Since_Last_act_noffer', 'No_list_IND_24M',
+                     'No_List_STST_3M', 'Inv_Val_12M', 'No_Act_Lo_1vs2',
+                     'No_Act_WOS_12M', 'Inv_Val_3M', 'Avg_OAF_6M',
+                     'No_Act_1M', 'AVG_Share_Online', 'Inv_Days_12M',
+                     'No_list_FB_6M', 'No_Act_6M', 'List_STS_T4_12M',
+                     'No_List_On_24M', 'No_Act_Lo_1M', 'Avg_Views_6M',
+                     'AVG_STF_12M', 'List_STS_Index_1M',
+                     'AVG_Refresh_p_Posting', 'Inv_Val_1M',
+                     'List_STS_Index_12M', 'No_Act_Ph_3M', 'Offer_days_24M',
+                     'Avg_Views_1M', 'List_STS_Index_3M',
+                     'AVG_Renew_p_Posting', 'List_STS_FB_1M',
+                     'Count_SIC_3', 'Avg_Views_12M', 'Inv_Days_1M',
+                     'No_Act_WOF_1vs2', 'List_FB_HOM_1M', 'No_Act_WOF_1M',
+                     'List_STS_off_24M', 'AVG_STF_6M', 'Var_04',
+                     'AVG_STF_1M', 'List_FB_off_6M', 'No_List_Off_1M']
+
+    num_dropped_vars = 4
+    dropped_variables = all_variables[len(all_variables) - num_dropped_vars:
+                                      len(all_variables)]
+    # dropped_variables = ['Var_04', 'No_Act_WOF_1M', 'List_FB_off_6M',
+    #                     'No_List_Off_1M']
+    if len(dropped_variables) > 0:
+        print('Dropping variables:', dropped_variables)
+        data_df = data_df.drop(dropped_variables, axis=1)
+    else:
+        print('not dropping any variable')
+
+if enable_histograms:
+    print('Plotting histograms via pandas')
+    data_df.hist(color='k', alpha=0.5, bins=50)
+    plt.figure()
+    target_sold_df.hist(color='k', alpha=0.5, bins=50)
+    plt.figure()
+    target_sales_df.hist(color='k', alpha=0.5, bins=50)
+    plt.show()
+
+data_df = remove_nulls(data_df, mode='zero', add_null_columns=False)
 # mode='zero'
 
 # print("data_df.columns[50]:", data_df.columns[50])
@@ -765,3 +809,4 @@ var_importances_pd = pd.DataFrame(var_importances,
                                                                        ascending=False)
 
 print("Variable importances:\n", var_importances_pd)
+print("Variables ordered by importance:", var_importances_pd.index.tolist())
