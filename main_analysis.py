@@ -1,5 +1,5 @@
 ########################################################################
-# Machine learning task 2                                              #
+# Data Science Exercise:                                               #
 #                                                                      #
 # Prediction of lead success and transaction price                     #
 #                                                                      #
@@ -13,6 +13,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
+import tensorflow as tf
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -52,14 +53,16 @@ from data_loading import split_data
 from null_handling import remove_nulls
 from correlation_analysis import analyze_using_PCA
 from correlation_analysis import analyze_correlation_matrix
+from tensorflow_data_processing import train_input_fn
+from tensorflow_data_processing import eval_input_fn
 
 # Configuration. These variables specify what parts of
 # the whole analysis are executed
 filename = 'data/testdata.csv'
 explanations_filename = 'data/variable_explanations.csv'
 NUMPY_SEED = 12345
-enable_feature_selection = True
-enable_histograms = False
+enable_feature_selection = False # or True
+enable_histograms = False # or True
 enable_correlation_analysis = False # or True
 enable_pca_analysis = False  # or True
 
@@ -414,20 +417,99 @@ if enable_support_vector_classifier:
     test_acc[('SVC_CR', 'val')] = \
         accuracy_score(y_val, pred_svc_val)
     test_acc[('SVC_CE', 'train')] = \
-        cross_entropy(y_train, pred_svc_train)
+        cross_entropy(y_train, prob_svc_train)
     test_acc[('SVC_CE', 'val')] = \
-        cross_entropy(y_val, pred_svc_val)
+        cross_entropy(y_val, prob_svc_val)
     if evaluate_test_data:
         test_acc[('SVC_CR', 'test')] = \
             accuracy_score(y_test, pred_svc_test)
         test_acc[('SVC_CE', 'test')] = \
-            cross_entropy(y_test, pred_svc_test)
+            cross_entropy(y_test, prob_svc_test)
 
     print("SVC best_score:", svc_rs.best_score_,
           "best_params:", svc_rs.best_params_)
     classification_methods.append('svc')
 
+enable_dnn_classifier = True
+batch_size = 200
+train_steps = 100
+if enable_dnn_classifier:
+    tf.logging.set_verbosity(tf.logging.INFO)
+    my_feature_columns = []
+
+    X_train_df = pd.DataFrame(data=X_train, columns=data_df.columns)
+    X_val_df = pd.DataFrame(data=X_val, columns=data_df.columns)
+    X_test_df = pd.DataFrame(data=X_test, columns=data_df.columns)
+    y_train_df = pd.DataFrame(data=y_train, columns=['label_1'])
+    y_val_df = pd.DataFrame(data=y_val, columns=['label_1'])
+    y_test_df = pd.DataFrame(data=y_test, columns=['label_1'])
+
+    for key in X_train_df.keys():
+        my_feature_columns.append(tf.feature_column.numeric_column(key=key))
+
+    # Build 2 hidden layer DNN with 10, 10 units respectively.
+    dnn = tf.estimator.DNNClassifier(
+        feature_columns=my_feature_columns,
+        # Two hidden layers of 10 nodes each.
+        hidden_units=[60, 20],
+        # The model must choose between 3 classes.
+        n_classes=2)
+
+    # Train the Model.
+    dnn.train(
+        input_fn=lambda: train_input_fn(X_train_df, y_train_df, batch_size),
+        steps=train_steps)
+
+    # Evaluate the model.
+    eval_result = dnn.evaluate(
+        input_fn=lambda: eval_input_fn(X_val_df, y_val_df, batch_size))
+
+    print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
+
+    pred_dnn_train = dnn.predict(
+        input_fn=lambda: train_input_fn(X_train_df, y_train_df, batch_size))
+    l = list(pred_dnn_train)
+    print('l[0]', l[0])
+    print('type(l)', type(l))
+    print('type(l[0])', type(l[0]))
+
+    pred_dnn_val = dnn.predict(
+        input_fn=lambda: train_input_fn(X_val_df, y_val_df, batch_size))
+    print(pred_dnn_val)
+    print(type(pred_dnn_val))
+
+
+    pred_dnn_test = dnn.predict(
+        input_fn=lambda: train_input_fn(X_test_df, y_test_df, batch_size))
+
+    prob_dnn_train = dnn.predict(
+        input_fn=lambda: train_input_fn(X_train_df, y_train_df, batch_size),
+        predict_keys="probabilities")
+    prob_dnn_val = dnn.predict(
+        input_fn=lambda: train_input_fn(X_val_df, y_val_df, batch_size),
+        predict_keys="probabilities")
+    prob_dnn_test = dnn.predict(
+        input_fn=lambda: train_input_fn(X_test_df, y_test_df, batch_size),
+        predict_keys="probabilities")
+
+    test_acc[('DNN_CR', 'train')] = \
+        accuracy_score(y_train, pred_dnn_train)
+    test_acc[('DNN_CR', 'val')] = \
+        accuracy_score(y_val, pred_dnn_val)
+    test_acc[('DNN_CE', 'train')] = \
+        cross_entropy(y_train, pred_dnn_train)
+    test_acc[('DNN_CE', 'val')] = \
+        cross_entropy(y_val, pred_dnn_val)
+    if evaluate_test_data:
+        test_acc[('DNN_CR', 'test')] = \
+            accuracy_score(y_test, pred_dnn_test)
+        test_acc[('DNN_CE', 'test')] = \
+            cross_entropy(y_test, pred_dnn_test)
+
+    classification_methods.append('dnn')
+
 print(test_acc)
+quit()
 
 res_sold_df = pd.DataFrame()
 for (alg, test_set) in test_acc.keys():
@@ -674,6 +756,10 @@ for classification_method in classification_methods:
         prob_train = prob_svc_train[:, 1]
         prob_val = prob_svc_val[:, 1]
         prob_test = prob_svc_test[:, 1]
+    elif classification_method == 'dnn':
+        prob_train = prob_dnn_train[:, 1]
+        prob_val = prob_dnn_val[:, 1]
+        prob_test = prob_dnn_test[:, 1]
     else:
         raise ValueError('Unknown classification_method:',
                          classification_method)
