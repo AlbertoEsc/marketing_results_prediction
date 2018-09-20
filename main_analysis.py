@@ -55,6 +55,7 @@ from correlation_analysis import analyze_using_PCA
 from correlation_analysis import analyze_correlation_matrix
 from tensorflow_data_processing import train_input_fn
 from tensorflow_data_processing import eval_input_fn
+from tensorflow_data_processing import extract_pred_and_prob_from_estimator_predictions
 
 # Configuration. These variables specify what parts of
 # the whole analysis are executed
@@ -431,9 +432,11 @@ if enable_support_vector_classifier:
     classification_methods.append('svc')
 
 enable_dnn_classifier = True
-batch_size = 200
-train_steps = 100
+batch_size = 400
+eval_batch_size = 1000
+train_steps = 20000
 if enable_dnn_classifier:
+    print('Training a DNNClassifier')
     tf.logging.set_verbosity(tf.logging.INFO)
     my_feature_columns = []
 
@@ -444,6 +447,8 @@ if enable_dnn_classifier:
     y_val_df = pd.DataFrame(data=y_val, columns=['label_1'])
     y_test_df = pd.DataFrame(data=y_test, columns=['label_1'])
 
+    # TODO: Add grid search for the DNN parameters
+    # TODO: Add dropout or other regularization techniques
     for key in X_train_df.keys():
         my_feature_columns.append(tf.feature_column.numeric_column(key=key))
 
@@ -451,7 +456,7 @@ if enable_dnn_classifier:
     dnn = tf.estimator.DNNClassifier(
         feature_columns=my_feature_columns,
         # Two hidden layers of 10 nodes each.
-        hidden_units=[60, 20],
+        hidden_units=[50, 10],
         # The model must choose between 3 classes.
         n_classes=2)
 
@@ -466,31 +471,24 @@ if enable_dnn_classifier:
 
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
-    pred_dnn_train = dnn.predict(
-        input_fn=lambda: train_input_fn(X_train_df, y_train_df, batch_size))
-    l = list(pred_dnn_train)
-    print('l[0]', l[0])
-    print('type(l)', type(l))
-    print('type(l[0])', type(l[0]))
+    predictions_dnn_train = dnn.predict(
+        input_fn=lambda: eval_input_fn(X_train_df, None, batch_size))
+    pred_dnn_train, prob_dnn_train = \
+        extract_pred_and_prob_from_estimator_predictions(predictions_dnn_train)
 
-    pred_dnn_val = dnn.predict(
-        input_fn=lambda: train_input_fn(X_val_df, y_val_df, batch_size))
-    print(pred_dnn_val)
-    print(type(pred_dnn_val))
+    predictions_dnn_val = dnn.predict(
+        input_fn=lambda: eval_input_fn(X_val_df, None, eval_batch_size))
+    pred_dnn_val, prob_dnn_val = \
+        extract_pred_and_prob_from_estimator_predictions(predictions_dnn_val)
 
+    predictions_dnn_test = dnn.predict(
+        input_fn=lambda: eval_input_fn(X_test_df, None, eval_batch_size))
+    pred_dnn_test, prob_dnn_test = \
+        extract_pred_and_prob_from_estimator_predictions(predictions_dnn_test)
 
-    pred_dnn_test = dnn.predict(
-        input_fn=lambda: train_input_fn(X_test_df, y_test_df, batch_size))
-
-    prob_dnn_train = dnn.predict(
-        input_fn=lambda: train_input_fn(X_train_df, y_train_df, batch_size),
-        predict_keys="probabilities")
-    prob_dnn_val = dnn.predict(
-        input_fn=lambda: train_input_fn(X_val_df, y_val_df, batch_size),
-        predict_keys="probabilities")
-    prob_dnn_test = dnn.predict(
-        input_fn=lambda: train_input_fn(X_test_df, y_test_df, batch_size),
-        predict_keys="probabilities")
+    #prob_dnn_train = dnn.predict(
+    #    input_fn=lambda: eval_input_fn(X_train_df, None, eval_batch_size),
+    #    predict_keys="probabilities")
 
     test_acc[('DNN_CR', 'train')] = \
         accuracy_score(y_train, pred_dnn_train)
