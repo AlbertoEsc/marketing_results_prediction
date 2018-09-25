@@ -17,6 +17,13 @@ import numpy as np
 
 
 def remove_nulls(data, mode="mean", add_null_columns=False, verbose=False):
+    """From a pandas DataFrame, this function substitutes null values with
+    other values (np.nan, the column mean, median, mode, or zero).
+
+    If add_null_columns is True, the data is extended with binary columns
+    that indicate whether a null was present in the original data."""
+    # Notice, if add_null_columns is false, this function could be easily
+    # replaced by sklearn.preprocessing.Imputer
     data = copy.deepcopy(data)
     data_null = pd.isnull(data)
     if verbose:

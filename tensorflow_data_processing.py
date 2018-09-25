@@ -46,6 +46,9 @@ def eval_input_fn(features, labels, batch_size):
 
 
 def extract_pred_and_prob_from_estimator_predictions(predictions):
+    """From a prediction object computed by the estimator, this function
+    extracts the prediction (class id) and probabilities and returns them
+    as two numpy arrays. """
     pred = np.array([])
     prob = np.array([])
     for prediction in predictions:

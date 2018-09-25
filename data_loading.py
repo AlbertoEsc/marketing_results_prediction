@@ -1,3 +1,11 @@
+########################################################################
+# Routines to load the data from the csv files and to process it       #
+#                                                                      #
+# Author: Alberto N. Escalante B.                                      #
+# Date: 13.08.2018                                                     #
+# E-mail: alberto.escalante@ini.rub.de                                 #
+#                                                                      #
+########################################################################
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
@@ -8,38 +16,35 @@ import numpy as np
 
 
 def read_data(filename):
+    """Reads the data from a csv file"""
     data = pd.read_csv(filename, decimal=',', sep=';')
     # print("data.head()\n", data.head())
     # print("data.describe()\n", data.describe())
-
-    # data_null = pd.isnull(data)
-    # print("data_null.head()\n", data_null.head())
-    # data_mean = data.mean()
-    # print("data_mean\n", data_mean)
-    # data_median = data.median()
-    # print("data_median\n", data_median)
-
-    # Handling of null values (nans)
 
     # Why was this weird column name used? '\xef\xbb\xbfID'
     id_df = data['ID'] # ID
     target_sold_df = data['Target_Sold'] # ).copy()
     target_sales_df = data['Target_Sales'] # ).copy()
     data = data.drop(['ID', 'Target_Sold', 'Target_Sales'], axis=1)
-    # print("data.head()\n", data.head())
     return data, id_df, target_sold_df, target_sales_df
 
 
 def read_explanations(explanations_filename):
+    """Reads the variable explanations from a csv file"""
     explanations_file = open(explanations_filename)
     explanations_reader = csv.reader(explanations_file, delimiter=';')
     explanations = [row for row in explanations_reader]
     explanations_file.close()
-    # print(explanations)
     return explanations
 
 
 def compute_indices_train_val_test(num_samples, frac_val=0.2, frac_test=0.2):
+    """Computes sample indices that divide the data in
+    training/validation/test sets.
+
+    The proportion of samples used for the validation and test sets is given
+    by two non-negative float numbers frac_val and frac_test (the remaining
+    samples are the training data)."""
     all_indices = np.arange(num_samples)
     np.random.shuffle(all_indices)
     samples_train = int(num_samples * (1.0 - frac_val - frac_test))
@@ -51,4 +56,6 @@ def compute_indices_train_val_test(num_samples, frac_val=0.2, frac_test=0.2):
 
 
 def split_data(data, indices_train, indices_val, indices_test):
+    """Divides the ndarray data into three ndarrays, by using the provided
+    indices."""
     return data[indices_train], data[indices_val], data[indices_test]
