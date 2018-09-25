@@ -1,16 +1,18 @@
 # Marketing Results Prediction
 
-Marketing Results Prediction is a Data Science exercise where a few problems are solved that allow the sales team to focus their marketing efforts in a few customers.
+Marketing Results Prediction is a Data Science exercise/project where a few problems are solved that allow the sales team to focus their marketing efforts in a few customers.
 
 ## Data
-The data is contained in a CSV file, where each sample (row) contains two important labels: contract closed (a binary variable) and sales value (a non-negative float value). The semantics of the remaining about 50 variables are not known, but (most of) these variables are useful to estimate the two labels.
-** The data is not yet available publicly **
+The data describes previous results of the sales team, and it is contained in a CSV file, where each samplei/client (row) contains two important labels: contract closed (a binary variable) and sales value (a non-negative float value). The semantics of the remaining about 50 variables are not known, but (most of) these variables are useful to estimate the two labels.
+**The data is not yet available publicly**
 
 ## Solution 
 The proposed solution builds three different models.
 * Model 1 (M1) is a classification model that predicts the probability that 'contract closed' is 1.
-* Model 2 (M2) is a regression model that predicts the variable 'sales value' **only when a 'contract closed' is 1.**
+* Model 2 (M2) is a regression model that predicts the variable 'sales value' **only when 'contract closed' is 1.**
 * Model 3 (M3) is a regression model that predicts the variable 'sales value'. If 'contract closed' is 0, the variable 'sales value' is assumed to be zero.
+
+Model 1 and 2 are combined in a single model that predicts the expected return for an arbitrary sample. This is better than focusing on the samples with highest probability of a contract and also better than focusing on the samples with largest predicted contract value.
 
 ## Algorithms
 Different algorithms were tested for each model, including basic algorithms and more challenging ones. The implementations used are those from sklearn and tf.estimators. In all cases hyperparameters where found using randomized search with cross validation.
