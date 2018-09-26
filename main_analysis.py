@@ -409,10 +409,8 @@ if enable_support_vector_classifier:
     classification_methods.append('svc')
 
 enable_dnn_classifier = True
-batch_size = 400
 eval_batch_size = 1000
-train_steps = 1000 # 20000
-num_iter_dnn = 4
+num_iter_dnn = 200
 if enable_dnn_classifier:
     print('Training a DNNClassifier')
     # tf.logging.set_verbosity(tf.logging.INFO)
@@ -428,20 +426,32 @@ if enable_dnn_classifier:
     for key in X_train_df.keys():
         my_feature_columns.append(tf.feature_column.numeric_column(key=key))
 
-    # TODO: Add random search for the DNN parameters
-    # TODO: Add dropout or other regularization techniques
-    # TODO: Use batch_norm?
-    param_dist_dnn = {'batch_size': [100, 200, 400, 600],
-                      'hidden_0': [30, 40, 50, 60, 70],
-                      'hidden_1': [5, 10, 15, 20, 25, 30],
-                      'hidden_2': [1, 3, 5, 7, 9],
-                      'dropout': [0.0, 0.1, 0.2, 0.3],
-                      'batch_norm': [False]}  # Not available in TF 1.8?
+    # train_steps = 15000  # 20000
+    param_dist_dnn = {'batch_size': [50, 60, 75, 90, 105],
+                      'hidden_0': [40, 45, 50, 55, 60, 65],
+                      'hidden_1': [10, 15, 20, 25],
+                      'hidden_2': [3, 5, 7, 9, 11],
+                      'dropout': [0.05, 0.1, 0.15, 0.2, 0.3],
+                      'batch_norm': [False],  # Not available in TF 1.8
+                      'train_steps': [10000, 15000, 20000, 25000]}
+
+    # best params: {'hidden_2': 7, 'hidden_1': 15, 'hidden_0': 50,
+    # 'dropout': 0.1, 'batch_size': 75, 'batch_norm': False}
+    # CR train: 0.95819889582
+    # CR validation: 0.938266293827
+
+    # best params: {'hidden_2': 7, 'hidden_1': 20, 'hidden_0': 70,
+    # 'dropout': 0.3, 'batch_size': 100, 'batch_norm': False}
+    # best CE validation: 0.156133931503
+    # best CR validation: 0.944719294472
 
     best_params = None
     best_model = None
     best_CE_val = None
     best_CR_val = None
+    best_prob_dnn_train = None
+    best_prob_dnn_val = None
+    best_prob_dnn_test = None
     for i in range(num_iter_dnn):
         param_list = list(ParameterSampler(param_dist_dnn, n_iter=1))[0]
         print('Parameters for DNN:', param_list)
@@ -451,6 +461,7 @@ if enable_dnn_classifier:
         hidden_2 = param_list['hidden_2']
         dropout = param_list['dropout']
         batch_norm = param_list['batch_norm']
+        train_steps = param_list['train_steps']
 
         # Build 3 hidden layer DNN with hidden_0 -- hidden_2 units respectively
         dnn = tf.estimator.DNNClassifier(
@@ -503,6 +514,8 @@ if enable_dnn_classifier:
         print('CR validation:', CR_val)
 
         # Select best model according to cross entropy (validation data)
+        # TODO: Order all results by increasing CE and display for analysis
+        # instead of keeping just the best CE
         if best_CE_val is None or best_CE_val > CE_val:
             best_CE_train = CE_train
             best_CE_val = CE_val
@@ -512,15 +525,20 @@ if enable_dnn_classifier:
             best_CR_test = CR_test
             best_params = param_list
             best_model = dnn
+            best_prob_dnn_train = prob_dnn_train
+            best_prob_dnn_val = prob_dnn_val
+            best_prob_dnn_test = prob_dnn_test
 
     print('best params:', best_params)
-    print('best model:', best_model)
     print('best CE validation:', best_CE_val)
     print('best CR validation:', best_CR_val)
     test_acc[('DNN_CR', 'train')] = best_CR_train
     test_acc[('DNN_CR', 'val')] = best_CR_val
     test_acc[('DNN_CE', 'train')] = best_CE_train
     test_acc[('DNN_CE', 'val')] = best_CE_val
+    prob_dnn_train = best_prob_dnn_train
+    prob_dnn_val = best_prob_dnn_val
+    prob_dnn_test = best_prob_dnn_test
 
     classification_methods.append('dnn')
 
