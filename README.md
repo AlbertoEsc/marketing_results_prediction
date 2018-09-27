@@ -1,46 +1,48 @@
 # Marketing Results Prediction
 
-Marketing Results Prediction is a Data Science exercise/project where a few models are created that allow the sales team to focus their marketing efforts in a few customers.
+*Marketing Results Prediction* is a Data Science exercise/project that uses supervised learning methods to understand and predict the success of a marketing strategy on individual customers.
+The resulting models allow the sales team to reduce their marketing efforts by focusing on the most promising customers in terms of expected return.
 
 ## Data
-The data describes previous results of the sales team, and it is contained in a CSV file, where each samplei/client (row) contains two important labels: contract closed (a binary variable) and sales value (a non-negative float value). The semantics of the remaining about 50 variables are not known, but (most of) these variables are useful to estimate the two labels.
-**The data is not yet available publicly**
+The data is contained in a single CSV file that describes previous marketing results on different customers. Each entry represents a customer and the different interactions that have already taken place. There are two two important fields: contract closed (a binary variable) and contract value (a non-negative float value). These two fields are the labels that are predicted. The semantics of the remaining about 50 fields (variables/predictors) are not known, but most of  them are indeed useful to estimate the labels.
+**The data is not available publicly yet.**
 
 ## Solution 
-The proposed solution builds three different models.
+In order to provide the most accurate estimations of the probability that a contract is closed and of the contract value, three models are built in the proposed solution.
 * Model 1 (M1) is a classification model that predicts the probability that 'contract closed' is 1.
-* Model 2 (M2) is a regression model that predicts the variable 'sales value'. **This model is restricted to the case  when 'contract closed' is 1.**
-* Model 3 (M3) is a regression model that predicts the variable 'sales value'. If 'contract closed' is 0, the variable 'sales value' is assumed to be zero.
+* Model 2 (M2) is a regression model that predicts the variable 'contract value'. **The data used to train this model is restricted to the samples where 'contract closed' is 1.**
+* Model 3 (M3) is a regression model that predicts the variable 'contract value'. If 'contract closed' is 0, the variable 'contract value' is assumed to be zero.
 
-Model 1 and 2 are combined in a single model that predicts the expected return for an arbitrary sample. This is better than focusing on the samples with highest probability of a contract and also better than focusing on the samples with largest predicted contract value.
+Model 1 and 2 are combined in a single model that predicts the *expected return* for an arbitrary customer. This is better than simply focusing on the samples with highest probability of a contract and also better than focusing on the samples with largest predicted contract value.
 
 ## Algorithms
-Different algorithms were tested for each model, including basic algorithms and more challenging ones. The implementations used are those from sklearn and tf.estimators. In all cases hyperparameters where found using randomized search with cross validation.
+For each one of the models, different algorithms with various complexities were tested, including basic ones (such as linear regression and logistic regression) and more powerful ones (e.g., gradient boosting, random forests, and a 4 layer neural network). The implementations used are those from sklearn and tf.estimators. In all cases *randomized search with cross validation* was used to select good hyperparameters.
 The algorithms used for model 1 are: 
 * Logistic Regression
 * K-Nearest Neighbors Classifier
 * Random Forest Classifier
 * Gradient Boosting Classifier
-* Support Vector Classifier (SVC)
+* Support Vector Classifier (SVC) with an RBF kernel
 
 The algorithms used for model 2 are: 
 * Linear Regression
 * Ridge Regression
 * Random Forest Regressor
 * Gradient Boosting Regressor
-* Support Vector Regression (SVR)
-* A 3-layer neural network (DNNClassifier, it uses random search for hyperparameter search but without cross validation)
+* Support Vector Regression (SVR) with an RBF kernel
+* A 4-layer neural network (DNNClassifier, it uses random search for hyperparameter search but without cross validation)
 
 The algorithms used for model 3 are:
 * Random Forest Regressor
-* Support Vector Regression (SVR)
+* Support Vector Regression (SVR) with an RBF kernel
 
+Moreover, in order to compute *expected return values*, all possible combinations of algorithms for models M1 and M2 were tested. According to the validation data, the best combination is given by a Random Forest Classifier (M1) and a Random Forest Regressor (M2).
 
 ## Dependencies
 Marketing Results Prediction requires the following libraries:
 * numpy
 * pandas
-* tensorflow (the code runs correctly on version 1.8 at least)
+* tensorflow (the code runs correctly on TF version 1.8 at least)
 * scipy
 * sklearn
 * matplotlib
@@ -51,11 +53,11 @@ Marketing Results Prediction requires the following libraries:
 The code can be simply run as:
   > python3 -u main_analysis.py
 
-Several options control which algorithms are executed and which plots are generated. Such options need to be changed directly in the source code (Congiguration Variables section).
+Several Boolean flags control which algorithms are executed and which plots are generated. Such flags can be set directly in the source code (*Configuration Variables* section in main_analysis.py).
 
 
 ## Author
-Marketing Results Prediction has been developed by Alberto N. Escalante B. (alberto.escalante@ini.rub.de) as a data science exercise/project. It might be useful as a code example to learn some methods of Data Science using the pandas/numpy/sklearn/TensorFlow libraries.
+Marketing Results Prediction has been developed by Alberto N. Escalante B. (alberto.escalante@ini.rub.de) as a data science exercise/project. It might be useful as a code example to learn some methods of Data Science using pandas/numpy/sklearn/TensorFlow.
 
 Bugs/Suggestions/Comments/Questions: please send them to alberto.escalante@ini.rub.de or via github.
 I will be glad to help you.
