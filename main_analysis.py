@@ -45,6 +45,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.svm import SVC
+# Plots
 import matplotlib.pyplot as plt
 
 from data_loading import read_data
@@ -74,6 +75,7 @@ enable_linear_regression_for_sold = False
 enable_random_forest_classifier = True
 enable_gradient_boosting_classifier = False 
 enable_support_vector_classifier = False 
+enable_dnn_classifier = True
 
 enable_linear_regression_for_sales = False 
 enable_ridge_regression = False 
@@ -85,7 +87,7 @@ enable_random_forest_regressor_m3 = False or True
 enable_support_vector_regressor_m3 = False
 
 verbose = False
-evaluate_test_data = False # or True
+evaluate_test_data = False  # or True
 enable_efficiency_plot = False
 
 ############################################################################
@@ -293,7 +295,7 @@ if enable_logistic_regression:
 # M1. RandomForestClassifier
 if enable_random_forest_classifier:
     print('Using randomized search to tune a random forest classifier...')
-    #param_dist_rf = {"n_estimators": sp_randint(30, 40), 
+    # param_dist_rf = {"n_estimators": sp_randint(30, 40),
     #        "max_depth": [None, 20, 23, 25, 27, ]}
     param_dist_rf = {"n_estimators": [37]}  # zero and zero no-padding
     # param_dist_rf = {"n_estimators": [23]} # mean
@@ -338,10 +340,13 @@ if enable_gradient_boosting_classifier:
     #                  "learning_rate": sp_uniform(0.17, 0.35)}
     param_dist_gbc = {"n_estimators": [102], "max_depth": [10],
                       "learning_rate": [0.24422626]}  # zero no-padding
-    # param_dist_gbc = {"n_estimators": [111], "max_depth": [8], "learning_rate": [0.242745]} # zero
-    # param_dist_gbc = {"n_estimators": [119], "max_depth": [7], "learning_rate": [0.328158]} # mean
-    # GradientBoostingClassifier best_score: 0.964508496451 best_params: {'n_estimators': 119,
-    # 'learning_rate': 0.32815821385475585, 'max_depth': 7}
+    # param_dist_gbc = {"n_estimators": [111], "max_depth": [8],
+    # "learning_rate": [0.242745]} # zero
+    # param_dist_gbc = {"n_estimators": [119], "max_depth": [7],
+    # "learning_rate": [0.328158]} # mean
+    # GradientBoostingClassifier best_score: 0.964508496451 best_params:
+    # {'n_estimators': 119, 'learning_rate': 0.32815821385475585,
+    # 'max_depth': 7}
     gbc = GradientBoostingClassifier()
     gbc_rs = RandomizedSearchCV(gbc, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_gbc)
@@ -408,9 +413,8 @@ if enable_support_vector_classifier:
           "best_params:", svc_rs.best_params_)
     classification_methods.append('svc')
 
-enable_dnn_classifier = True
 eval_batch_size = 1000
-num_iter_dnn = 200
+num_iter_dnn = 2
 if enable_dnn_classifier:
     print('Training a DNNClassifier')
     # tf.logging.set_verbosity(tf.logging.INFO)
@@ -427,23 +431,23 @@ if enable_dnn_classifier:
         my_feature_columns.append(tf.feature_column.numeric_column(key=key))
 
     # train_steps = 15000  # 20000
-    param_dist_dnn = {'batch_size': [50, 60, 75, 90, 105],
-                      'hidden_0': [40, 45, 50, 55, 60, 65],
-                      'hidden_1': [10, 15, 20, 25],
-                      'hidden_2': [3, 5, 7, 9, 11],
-                      'dropout': [0.05, 0.1, 0.15, 0.2, 0.3],
+    param_dist_dnn = {'batch_size': [70, 75, 80, 85],
+                      'hidden_0': [55, 60, 65],
+                      'hidden_1': [10, 13, 15, 17],
+                      'hidden_2': [10, 11, 12],
+                      'dropout': [0.11, 0.12, 0.13, 0.14, 0.15, 0.16],
                       'batch_norm': [False],  # Not available in TF 1.8
-                      'train_steps': [10000, 15000, 20000, 25000]}
+                      'train_steps': [7500, 10000, 12500, 15000]}
 
-    # best params: {'hidden_2': 7, 'hidden_1': 15, 'hidden_0': 50,
-    # 'dropout': 0.1, 'batch_size': 75, 'batch_norm': False}
-    # CR train: 0.95819889582
-    # CR validation: 0.938266293827
+    # best params: {'train_steps': 10000, 'hidden_2': 11, 'hidden_1': 13,
+    # 'hidden_0': 60, 'dropout': 0.125, 'batch_size': 80, 'batch_norm': False}
+    # best CE validation: 0.151061799733
+    # best CR validation: 0.94730049473
 
-    # best params: {'hidden_2': 7, 'hidden_1': 20, 'hidden_0': 70,
-    # 'dropout': 0.3, 'batch_size': 100, 'batch_norm': False}
-    # best CE validation: 0.156133931503
-    # best CR validation: 0.944719294472
+    # best params: {'train_steps': 15000, 'hidden_2': 11, 'hidden_1': 15,
+    # 'hidden_0': 60, 'dropout': 0.15, 'batch_size': 75, 'batch_norm': False}
+    # best CE validation: 0.150819466963
+    # best CR validation: 0.952247795225
 
     best_params = None
     best_model = None
@@ -560,7 +564,8 @@ test_m2_acc[('ChanceLevel_MSE', 'val')] = \
     mean_squared_error(y_m2_val, y_m2_val.mean() * np.ones_like(y_m2_val))
 if evaluate_test_data:
     test_m2_acc[('ChanceLevel_MSE', 'test')] = \
-        mean_squared_error(y_m2_test, y_m2_test.mean() * np.ones_like(y_m2_test))
+        mean_squared_error(y_m2_test, y_m2_test.mean() *
+                           np.ones_like(y_m2_test))
 
 # M2. LinearRegression
 if enable_linear_regression_for_sales:
@@ -585,7 +590,8 @@ if enable_ridge_regression:
     param_dist_rid = {"alpha": [0.00608446]}  # zero no-padding
     # param_dist_rid = {"alpha": [0.0052525]} # zero
     # param_dist_rid = {"alpha": [0.006925]} # mean
-    # Ridge best_score: 0.529470507097 best_params: {'alpha': 0.006925342341750873}
+    # Ridge best_score: 0.529470507097 best_params:
+    # {'alpha': 0.006925342341750873}
     rid = Ridge(alpha=0.125, normalize=True)
     rid_rs = RandomizedSearchCV(rid, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_rid)
@@ -634,10 +640,13 @@ if enable_gradient_boosting_regressor:
     param_dist_gbr = {"n_estimators": sp_randint(30, 55),
                       "max_depth": sp_randint(9, 12),
                       "learning_rate": sp_uniform(0.5, 0.7)}
-    # param_dist_gbr = {"n_estimators": [132], "max_depth": [10], "learning_rate": [0.6060324]} # zero
-    # param_dist_gbr = {"n_estimators": [100], "max_depth": [3], "learning_rate": [0.3560849]} # mean
-    # GradientBoostingRegressor best_score: 0.84072146393 best_params: {'n_estimators': 100,
-    # 'learning_rate': 0.35608492171567685, 'max_depth': 3}
+    # param_dist_gbr = {"n_estimators": [132], "max_depth": [10],
+    # "learning_rate": [0.6060324]} # zero
+    # param_dist_gbr = {"n_estimators": [100], "max_depth": [3],
+    # "learning_rate": [0.3560849]} # mean
+    # GradientBoostingRegressor best_score: 0.84072146393 best_params:
+    # {'n_estimators': 100, 'learning_rate': 0.35608492171567685,
+    # 'max_depth': 3}
     gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1,
                                     max_depth=40, random_state=0, loss='ls')
     gbr_rs = RandomizedSearchCV(gbr, n_iter=1, cv=5, n_jobs=20,
@@ -668,8 +677,8 @@ if enable_support_vector_regressor:
     # SVR best_score: 0.736684495686 best_params: {'epsilon': 1.425361602175401,
     # 'C': 691802.1635233087, 'gamma': 0.1947206879933659}
     param_dist_svr = {"C": [2.0**18.2], "epsilon": [2.2150127]}
-    # SVR best_score: 0.844215154692 best_params: {'epsilon': 2.2150127431750146,
-    # 'C': 301124.3815723463}
+    # SVR best_score: 0.844215154692 best_params:
+    # {'epsilon': 2.2150127431750146, 'C': 301124.3815723463}
     svr = SVR(kernel='rbf')
     svr_rs = RandomizedSearchCV(svr, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_svr)
@@ -705,7 +714,8 @@ if enable_random_forest_regressor_m3:
     param_dist_rfr_m3 = {"max_depth": [15]}  # zero no-padding
     # param_dist_rfr_m3 = {"max_depth": [20]} # zero
     # param_dist_rfr_m3 = {"max_depth": [8]} # mean
-    # RandomForestRegressor best_score: 0.638195402073 best_params: {'max_depth': 8}
+    # RandomForestRegressor best_score: 0.638195402073 best_params:
+    # {'max_depth': 8}
     rfr_m3 = RandomForestRegressor(max_depth=3, random_state=0)
     rfr_rs_m3 = RandomizedSearchCV(rfr_m3, n_iter=1, cv=5, n_jobs=20,
                                    param_distributions=param_dist_rfr_m3)
@@ -731,7 +741,8 @@ if enable_support_vector_regressor_m3:
     #        'gamma': sp_uniform(0.00005, 0.0001),
     #        "epsilon": sp_uniform(0.45, 0.2)}
     param_dist_svr_m3 = {"C": [244589], "epsilon": [0.5315116], 'gamma': [0.00012]}
-    # SVR best_score: 0.767954337244 best_params: {'epsilon': 0.5315115872222275,
+    # SVR best_score: 0.767954337244 best_params:
+    # {'epsilon': 0.5315115872222275,
     # 'C': 244589.00053342702, 'gamma': 0.000119908712214389}
     svr_m3 = SVR(kernel='rbf')
     svr_rs_m3 = RandomizedSearchCV(svr_m3, n_iter=1, cv=5, n_jobs=20,
@@ -843,9 +854,12 @@ for classification_method in classification_methods:
         top_promising_sales_indices_val = promising_sales_indices_val[-leads_kept_val:]
         top_promising_sales_indices_test = promising_sales_indices_test[-leads_kept_test:]
         if verbose:
-            print("len(top_promising_sales_indices_train)=", len(top_promising_sales_indices_train))
-            print("len(top_promising_sales_indices_val)=", len(top_promising_sales_indices_val))
-            print("len(top_promising_sales_indices_test)=", len(top_promising_sales_indices_test))
+            print("len(top_promising_sales_indices_train)=",
+                  len(top_promising_sales_indices_train))
+            print("len(top_promising_sales_indices_val)=",
+                  len(top_promising_sales_indices_val))
+            print("len(top_promising_sales_indices_test)=",
+                  len(top_promising_sales_indices_test))
 
         print("classification:", classification_method, "regression:", regression_method)
         e_total_revenue_train_sel = expected_sales_train[top_promising_sales_indices_train].sum()
@@ -901,13 +915,19 @@ for regression_method in regression_methods_m3:
     promising_sales_indices_train_m3 = np.argsort(expected_sales_train_m3)
     promising_sales_indices_val_m3 = np.argsort(expected_sales_val_m3)
     promising_sales_indices_test_m3 = np.argsort(expected_sales_test_m3)
-    top_promising_sales_indices_train_m3 = promising_sales_indices_train_m3[-leads_kept_train:]
-    top_promising_sales_indices_val_m3 = promising_sales_indices_val_m3[-leads_kept_val:]
-    top_promising_sales_indices_test_m3 = promising_sales_indices_test_m3[-leads_kept_test:]
+    top_promising_sales_indices_train_m3 = \
+        promising_sales_indices_train_m3[-leads_kept_train:]
+    top_promising_sales_indices_val_m3 = \
+        promising_sales_indices_val_m3[-leads_kept_val:]
+    top_promising_sales_indices_test_m3 = \
+        promising_sales_indices_test_m3[-leads_kept_test:]
     
-    e_total_revenue_train_sel_m3 = expected_sales_train_m3[top_promising_sales_indices_train_m3].sum()
-    e_total_revenue_val_sel_m3 = expected_sales_val_m3[top_promising_sales_indices_val_m3].sum()
-    e_total_revenue_test_sel_m3 = expected_sales_test_m3[top_promising_sales_indices_test_m3].sum()
+    e_total_revenue_train_sel_m3 = \
+        expected_sales_train_m3[top_promising_sales_indices_train_m3].sum()
+    e_total_revenue_val_sel_m3 = \
+        expected_sales_val_m3[top_promising_sales_indices_val_m3].sum()
+    e_total_revenue_test_sel_m3 = \
+        expected_sales_test_m3[top_promising_sales_indices_test_m3].sum()
     if verbose:
         print("e_total_revenue_train_sel_m3", e_total_revenue_train_sel_m3)
         print("e_total_revenue_val_sel_m3", e_total_revenue_val_sel_m3)
