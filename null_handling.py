@@ -13,27 +13,41 @@ from __future__ import division
 import copy
 
 import pandas as pd
+import numpy as np
 
 
 def remove_nulls(data, mode="mean", add_null_columns=False, verbose=False):
+    """From a pandas DataFrame, this function substitutes null values with
+    other values (np.nan, the column mean, median, mode, or zero).
+
+    If add_null_columns is True, the data is extended with binary columns
+    that indicate whether a null was present in the original data."""
+    # Notice, if add_null_columns is false, this function could be easily
+    # replaced by sklearn.preprocessing.Imputer
     data = copy.deepcopy(data)
     data_null = pd.isnull(data)
     if verbose:
         print("data_null:\n", data_null)
 
-    if mode == "mean":
+    if mode == "none":
+        substitute = np.nan
+    elif mode == "mean":
         substitute = data.mean() # column-wise by default
     elif mode == "median":
         substitute = data.median()
+    elif mode == "mode":
+        substitute = data.mode().iloc[0]
     elif mode == 'zero':
         substitute = 0.0 * data.mean()
     else:
         raise ValueError("invalid mode:" + str(mode))
-    print("Feature substitutions for null entries:\n", substitute)
 
-    columns = data.columns
-    for column in columns:
-        data.loc[data_null[column], column] = substitute[column]
+    print("Feature substitutions (%s) for null entries:\n" % mode, substitute)
+
+    if mode != "none":
+        columns = data.columns
+        for column in columns:
+            data.loc[data_null[column], column] = substitute[column]
 
     if add_null_columns:
         for column in columns:

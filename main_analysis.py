@@ -1,7 +1,7 @@
 ########################################################################
-# Machine learning task 2                                              #
+# Data Science Exercise.                                               #
 #                                                                      #
-# Prediction of lead success and transaction price                     #
+# Prediction of contract probability and contract value                #
 #                                                                      #
 # Author: Alberto N. Escalante B.                                      #
 # Date: 13.08.2018                                                     #
@@ -13,6 +13,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
+import tensorflow as tf
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -27,6 +28,7 @@ from sklearn.metrics import log_loss as cross_entropy
 from sklearn.model_selection import RandomizedSearchCV
 from scipy.stats import randint as sp_randint
 from scipy.stats import uniform as sp_uniform
+from sklearn.model_selection import ParameterSampler
 # Regression/ensemble algorithms
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
@@ -43,6 +45,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.svm import SVC
+# Plots
 import matplotlib.pyplot as plt
 
 from data_loading import read_data
@@ -52,13 +55,19 @@ from data_loading import split_data
 from null_handling import remove_nulls
 from correlation_analysis import analyze_using_PCA
 from correlation_analysis import analyze_correlation_matrix
+from tensorflow_data_processing import train_input_fn
+from tensorflow_data_processing import eval_input_fn
+from tensorflow_data_processing import extract_pred_and_prob_from_estimator_predictions
 
+############################################################################
 # Configuration. These variables specify what parts of
 # the whole analysis are executed
 filename = 'data/testdata.csv'
 explanations_filename = 'data/variable_explanations.csv'
-NUMPY_SEED = 1234
-enable_correlation_analysis = False or True
+NUMPY_SEED = 12345
+enable_feature_selection = False # or True
+enable_histograms = False # or True
+enable_correlation_analysis = False # or True
 enable_pca_analysis = False  # or True
 
 enable_logistic_regression = False 
@@ -66,6 +75,7 @@ enable_linear_regression_for_sold = False
 enable_random_forest_classifier = True
 enable_gradient_boosting_classifier = False 
 enable_support_vector_classifier = False 
+enable_dnn_classifier = True
 
 enable_linear_regression_for_sales = False 
 enable_ridge_regression = False 
@@ -73,22 +83,43 @@ enable_random_forest_regressor = True
 enable_gradient_boosting_regressor = False 
 enable_support_vector_regressor = False 
 
-enable_random_forest_regressor_m3 = True
+enable_random_forest_regressor_m3 = False or True
 enable_support_vector_regressor_m3 = False
 
 verbose = False
-evaluate_test_data =  False # or True
-enable_efficiency_plot = True
+evaluate_test_data = False  # or True
+enable_efficiency_plot = False
 
+############################################################################
+# Data loading and explorative data analysis
 # Load data and field explanations (files have been renamed)
 data_df, id_df, target_sold_df, target_sales_df = read_data(filename)
 print(data_df.describe())
 print(target_sold_df.describe())
 print(target_sales_df.describe())
-data_df = remove_nulls(data_df, mode='zero', add_null_columns=False)
 
-# print("data_df.columns[50]:", data_df.columns[50])
-# print("data_df.columns[61]:", data_df.columns[61])
+if enable_feature_selection:
+    all_variables_by_importance = []
+    num_vars = len(all_variables_by_importance)
+    num_dropped_vars = 4
+    dropped_variables = all_variables_by_importance[num_vars -
+                                                    num_dropped_vars:num_vars]
+    if len(dropped_variables) > 0:
+        print('Dropping variables:', dropped_variables)
+        data_df = data_df.drop(dropped_variables, axis=1)
+    else:
+        print('not dropping any variable')
+
+if enable_histograms:
+    print('Plotting histograms via pandas')
+    data_df.hist(color='k', alpha=0.5, bins=50)
+    plt.figure()
+    target_sold_df.hist(color='k', alpha=0.5, bins=50)
+    plt.figure()
+    target_sales_df.hist(color='k', alpha=0.5, bins=50)
+    plt.show()
+
+data_df = remove_nulls(data_df, mode='zero', add_null_columns=False)
 
 explanations = read_explanations(explanations_filename)
 if verbose:
@@ -107,7 +138,6 @@ print('data.shape:', data.shape)
 # Apply correlation analysis
 if enable_pca_analysis:
     analyze_using_PCA(target_sold, target_sales_all, data)
-# quit()
 
 # Extract data for sales predictions
 data_sales_sel = data[target_sold == 1.0, :]
@@ -117,7 +147,10 @@ print("len(data_sales_sel):", len(data_sales_sel),
 
 # Label enlargement
 
-# Split of samples (train, validation, test)
+############################################################################
+# Data preparation for the sklearn and tensorflow algorithms
+
+# Data splitting (train, validation, test)
 # The features for the first model are called X_train, X_val, X_test,
 # and labels (target_sold) are called y_train, y_val, y_test
 np.random.seed(NUMPY_SEED)
@@ -180,7 +213,9 @@ X_m2_test = (X_m2_test - X_train_mean) / X_train_std
 
 # Removal of outliers from training data (pending)
 
-# ML methods
+# ML methods model 1, 2 and 3
+
+############################################################################
 # First model (M1). Estimation of whether a lead will result in 'sold'
 test_acc = {}
 classification_methods = []
@@ -196,11 +231,9 @@ test_acc[('ChanceLevel_CR', 'val')] = \
     accuracy_score(y_val, stats.mode(y_val)[0] * np.ones_like(y_val))
 
 if evaluate_test_data:
-    # test_acc[('ChanceLevel_MSE', 'test')] = \
-    # mean_squared_error(y_test, y_test.mean() * np.ones_like(y_test))
     test_acc[('ChanceLevel_CR', 'test')] = \
         accuracy_score(y_test, stats.mode(y_test)[0] * np.ones_like(y_test))
-
+    # y_test.mean() does not make sense for categorical labels
 
 # M1. LinearRegression
 if enable_linear_regression_for_sold:
@@ -216,10 +249,6 @@ if enable_linear_regression_for_sold:
     pred_lr_test = pred_lr_test.clip(0, 1)
     prob_lr_test = np.stack((1-pred_lr_test, pred_lr_test), axis=1)
 
-    # test_acc[('LinearRegression_MSE', 'train')] = \
-    # mean_squared_error(y_train, pred_lr_train)
-    # test_acc[('LinearRegression_MSE', 'val')] = \
-    # mean_squared_error(y_val, pred_lr_val)
     test_acc[('LinearRegression_CR', 'train')] = \
         accuracy_score(y_train, pred_lr_train >= 0.5)
     test_acc[('LinearRegression_CR', 'val')] = \
@@ -247,10 +276,7 @@ if enable_logistic_regression:
     prob_logr_train = logr.predict_proba(X_train)
     prob_logr_val = logr.predict_proba(X_val)
     prob_logr_test = logr.predict_proba(X_test)
-    # test_acc[('LogisticRegression_MSE', 'train')] = \
-    # mean_squared_error(y_train, pred_logr_train)
-    # test_acc[('LogisticRegression_MSE', 'val')] = \
-    # mean_squared_error(y_val, pred_logr_val)
+
     test_acc[('LogisticRegression_CR', 'train')] = \
         accuracy_score(y_train, pred_logr_train)
     test_acc[('LogisticRegression_CR', 'val')] = \
@@ -269,13 +295,17 @@ if enable_logistic_regression:
 # M1. RandomForestClassifier
 if enable_random_forest_classifier:
     print('Using randomized search to tune a random forest classifier...')
-    #param_dist_rf = {"n_estimators": sp_randint(30, 40), 
+    # param_dist_rf = {"n_estimators": sp_randint(30, 40),
     #        "max_depth": [None, 20, 23, 25, 27, ]}
     param_dist_rf = {"n_estimators": [37]}  # zero and zero no-padding
     # param_dist_rf = {"n_estimators": [23]} # mean
     rf = RandomForestClassifier()
     rf_rs = RandomizedSearchCV(rf, n_iter=1, cv=5, n_jobs=20,
                                param_distributions=param_dist_rf)
+    rf.fit(X_train, y_train)
+    #
+    #
+    #
     rf_rs.fit(X_train, y_train)
     pred_rf_train = rf_rs.predict(X_train)
     pred_rf_val = rf_rs.predict(X_val)
@@ -283,6 +313,7 @@ if enable_random_forest_classifier:
     prob_rf_train = rf_rs.predict_proba(X_train)
     prob_rf_val = rf_rs.predict_proba(X_val)
     prob_rf_test = rf_rs.predict_proba(X_test)
+
     test_acc[('RandomForestClassifier_CR', 'train')] = \
         accuracy_score(y_train, pred_rf_train)
     test_acc[('RandomForestClassifier_CR', 'val')] = \
@@ -309,10 +340,13 @@ if enable_gradient_boosting_classifier:
     #                  "learning_rate": sp_uniform(0.17, 0.35)}
     param_dist_gbc = {"n_estimators": [102], "max_depth": [10],
                       "learning_rate": [0.24422626]}  # zero no-padding
-    # param_dist_gbc = {"n_estimators": [111], "max_depth": [8], "learning_rate": [0.242745]} # zero
-    # param_dist_gbc = {"n_estimators": [119], "max_depth": [7], "learning_rate": [0.328158]} # mean
-    # GradientBoostingClassifier best_score: 0.964508496451 best_params: {'n_estimators': 119,
-    # 'learning_rate': 0.32815821385475585, 'max_depth': 7}
+    # param_dist_gbc = {"n_estimators": [111], "max_depth": [8],
+    # "learning_rate": [0.242745]} # zero
+    # param_dist_gbc = {"n_estimators": [119], "max_depth": [7],
+    # "learning_rate": [0.328158]} # mean
+    # GradientBoostingClassifier best_score: 0.964508496451 best_params:
+    # {'n_estimators': 119, 'learning_rate': 0.32815821385475585,
+    # 'max_depth': 7}
     gbc = GradientBoostingClassifier()
     gbc_rs = RandomizedSearchCV(gbc, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_gbc)
@@ -328,14 +362,14 @@ if enable_gradient_boosting_classifier:
     test_acc[('GradientBoostingClassifier_CR', 'val')] = \
         accuracy_score(y_val, pred_gbc_val)
     test_acc[('GradientBoostingClassifier_CE', 'train')] = \
-        cross_entropy(y_train, pred_gbc_train)
+        cross_entropy(y_train, prob_gbc_train)
     test_acc[('GradientBoostingClassifier_CE', 'val')] = \
-        cross_entropy(y_val, pred_gbc_val)
+        cross_entropy(y_val, prob_gbc_val)
     if evaluate_test_data:
         test_acc[('GradientBoostingClassifier_CR', 'test')] = \
             accuracy_score(y_test, pred_gbc_test)
         test_acc[('GradientBoostingClassifier_CE', 'test')] = \
-            cross_entropy(y_test, pred_gbc_test)
+            cross_entropy(y_test, prob_gbc_test)
 
     print("GradientBoostingClassifier best_score:", gbc_rs.best_score_,
           "best_params:", gbc_rs.best_params_)
@@ -347,7 +381,8 @@ if enable_support_vector_classifier:
     # param_dist_svc = {"C": [2.0**k for k in np.arange(2, 5, 0.1)], 
     #        'gamma': sp_uniform(0.03, 0.04)}
     param_dist_svc = {"C": [12.996], 'gamma': [0.03562]}
-    # SVC best_score: 0.943213594321 best_params: {'C': 12.99603834169977, 'gamma': 0.03562230562818298}
+    # SVC best_score: 0.943213594321 best_params: {'C': 12.99603834169977,
+    # 'gamma': 0.03562230562818298}
     # param_dist_svc = {"C": [32]}
     # SVC best_score: 0.941277694128 best_params: {'C': 32}, zero, no-padding
     svc = SVC(kernel='rbf', probability=True)
@@ -365,18 +400,151 @@ if enable_support_vector_classifier:
     test_acc[('SVC_CR', 'val')] = \
         accuracy_score(y_val, pred_svc_val)
     test_acc[('SVC_CE', 'train')] = \
-        cross_entropy(y_train, pred_svc_train)
+        cross_entropy(y_train, prob_svc_train)
     test_acc[('SVC_CE', 'val')] = \
-        cross_entropy(y_val, pred_svc_val)
+        cross_entropy(y_val, prob_svc_val)
     if evaluate_test_data:
         test_acc[('SVC_CR', 'test')] = \
             accuracy_score(y_test, pred_svc_test)
         test_acc[('SVC_CE', 'test')] = \
-            cross_entropy(y_test, pred_svc_test)
+            cross_entropy(y_test, prob_svc_test)
 
     print("SVC best_score:", svc_rs.best_score_,
           "best_params:", svc_rs.best_params_)
     classification_methods.append('svc')
+
+eval_batch_size = 1000
+num_iter_dnn = 2
+if enable_dnn_classifier:
+    print('Training a DNNClassifier')
+    # tf.logging.set_verbosity(tf.logging.INFO)
+    my_feature_columns = []
+
+    X_train_df = pd.DataFrame(data=X_train, columns=data_df.columns)
+    X_val_df = pd.DataFrame(data=X_val, columns=data_df.columns)
+    X_test_df = pd.DataFrame(data=X_test, columns=data_df.columns)
+    y_train_df = pd.DataFrame(data=y_train, columns=['label_1'])
+    y_val_df = pd.DataFrame(data=y_val, columns=['label_1'])
+    y_test_df = pd.DataFrame(data=y_test, columns=['label_1'])
+
+    for key in X_train_df.keys():
+        my_feature_columns.append(tf.feature_column.numeric_column(key=key))
+
+    # train_steps = 15000  # 20000
+    param_dist_dnn = {'batch_size': [70, 75, 80, 85],
+                      'hidden_0': [55, 60, 65],
+                      'hidden_1': [10, 13, 15, 17],
+                      'hidden_2': [10, 11, 12],
+                      'dropout': [0.11, 0.12, 0.13, 0.14, 0.15, 0.16],
+                      'batch_norm': [False],  # Not available in TF 1.8
+                      'train_steps': [7500, 10000, 12500, 15000]}
+
+    # best params: {'train_steps': 10000, 'hidden_2': 11, 'hidden_1': 13,
+    # 'hidden_0': 60, 'dropout': 0.125, 'batch_size': 80, 'batch_norm': False}
+    # best CE validation: 0.151061799733
+    # best CR validation: 0.94730049473
+
+    # best params: {'train_steps': 15000, 'hidden_2': 11, 'hidden_1': 15,
+    # 'hidden_0': 60, 'dropout': 0.15, 'batch_size': 75, 'batch_norm': False}
+    # best CE validation: 0.150819466963
+    # best CR validation: 0.952247795225
+
+    best_params = None
+    best_model = None
+    best_CE_val = None
+    best_CR_val = None
+    best_prob_dnn_train = None
+    best_prob_dnn_val = None
+    best_prob_dnn_test = None
+    for i in range(num_iter_dnn):
+        param_list = list(ParameterSampler(param_dist_dnn, n_iter=1))[0]
+        print('Parameters for DNN:', param_list)
+        batch_size = param_list['batch_size']
+        hidden_0 = param_list['hidden_0']
+        hidden_1 = param_list['hidden_1']
+        hidden_2 = param_list['hidden_2']
+        dropout = param_list['dropout']
+        batch_norm = param_list['batch_norm']
+        train_steps = param_list['train_steps']
+
+        # Build 3 hidden layer DNN with hidden_0 -- hidden_2 units respectively
+        dnn = tf.estimator.DNNClassifier(
+            feature_columns=my_feature_columns,
+            # Two hidden layers of 10 nodes each.
+            hidden_units=[hidden_0, hidden_1, hidden_2],
+            # The model must choose between 2 classes.
+            n_classes=2,
+            # batch_norm=batch_norm,
+            dropout=dropout)  # dropout probability
+
+        # Train the Model.
+        dnn.train(
+            input_fn=lambda: train_input_fn(X_train_df,
+                                            y_train_df, batch_size),
+            steps=train_steps)
+
+        # Evaluate the model.
+        eval_result = dnn.evaluate(
+            input_fn=lambda: eval_input_fn(X_val_df, y_val_df, batch_size))
+
+        # print('Test set accuracy: {accuracy:0.3f}'.format(**eval_result))
+
+        predictions_dnn_train = dnn.predict(
+            input_fn=lambda: eval_input_fn(X_train_df, None, batch_size))
+        pred_dnn_train, prob_dnn_train = \
+            extract_pred_and_prob_from_estimator_predictions(predictions_dnn_train)
+
+        predictions_dnn_val = dnn.predict(
+            input_fn=lambda: eval_input_fn(X_val_df, None, eval_batch_size))
+        pred_dnn_val, prob_dnn_val = \
+            extract_pred_and_prob_from_estimator_predictions(predictions_dnn_val)
+
+        predictions_dnn_test = dnn.predict(
+            input_fn=lambda: eval_input_fn(X_test_df, None, eval_batch_size))
+        pred_dnn_test, prob_dnn_test = \
+            extract_pred_and_prob_from_estimator_predictions(predictions_dnn_test)
+
+        CR_train = accuracy_score(y_train, pred_dnn_train)
+        CR_val = accuracy_score(y_val, pred_dnn_val)
+        CR_test = accuracy_score(y_test, pred_dnn_test)
+
+        CE_train = cross_entropy(y_train, prob_dnn_train)
+        CE_val = cross_entropy(y_val, prob_dnn_val)
+        CE_test = cross_entropy(y_test, prob_dnn_test)
+
+        print('CE train:', CE_train)
+        print('CE validation:', CE_val)
+        print('CR train:', CR_train)
+        print('CR validation:', CR_val)
+
+        # Select best model according to cross entropy (validation data)
+        # TODO: Order all results by increasing CE and display for analysis
+        # instead of keeping just the best CE
+        if best_CE_val is None or best_CE_val > CE_val:
+            best_CE_train = CE_train
+            best_CE_val = CE_val
+            best_CE_test = CE_test
+            best_CR_train = CR_train
+            best_CR_val = CR_val
+            best_CR_test = CR_test
+            best_params = param_list
+            best_model = dnn
+            best_prob_dnn_train = prob_dnn_train
+            best_prob_dnn_val = prob_dnn_val
+            best_prob_dnn_test = prob_dnn_test
+
+    print('best params:', best_params)
+    print('best CE validation:', best_CE_val)
+    print('best CR validation:', best_CR_val)
+    test_acc[('DNN_CR', 'train')] = best_CR_train
+    test_acc[('DNN_CR', 'val')] = best_CR_val
+    test_acc[('DNN_CE', 'train')] = best_CE_train
+    test_acc[('DNN_CE', 'val')] = best_CE_val
+    prob_dnn_train = best_prob_dnn_train
+    prob_dnn_val = best_prob_dnn_val
+    prob_dnn_test = best_prob_dnn_test
+
+    classification_methods.append('dnn')
 
 print(test_acc)
 
@@ -385,6 +553,7 @@ for (alg, test_set) in test_acc.keys():
     res_sold_df.loc[alg, test_set] = test_acc[(alg, test_set)]
 print(res_sold_df)
 
+############################################################################
 # Second model (M2). Estimation of sales for successful leads
 test_m2_acc = {}
 regression_methods = []
@@ -395,7 +564,8 @@ test_m2_acc[('ChanceLevel_MSE', 'val')] = \
     mean_squared_error(y_m2_val, y_m2_val.mean() * np.ones_like(y_m2_val))
 if evaluate_test_data:
     test_m2_acc[('ChanceLevel_MSE', 'test')] = \
-        mean_squared_error(y_m2_test, y_m2_test.mean() * np.ones_like(y_m2_test))
+        mean_squared_error(y_m2_test, y_m2_test.mean() *
+                           np.ones_like(y_m2_test))
 
 # M2. LinearRegression
 if enable_linear_regression_for_sales:
@@ -420,7 +590,8 @@ if enable_ridge_regression:
     param_dist_rid = {"alpha": [0.00608446]}  # zero no-padding
     # param_dist_rid = {"alpha": [0.0052525]} # zero
     # param_dist_rid = {"alpha": [0.006925]} # mean
-    # Ridge best_score: 0.529470507097 best_params: {'alpha': 0.006925342341750873}
+    # Ridge best_score: 0.529470507097 best_params:
+    # {'alpha': 0.006925342341750873}
     rid = Ridge(alpha=0.125, normalize=True)
     rid_rs = RandomizedSearchCV(rid, n_iter=1, cv=5, n_jobs=20,
                                 param_distributions=param_dist_rid)
@@ -469,10 +640,13 @@ if enable_gradient_boosting_regressor:
     param_dist_gbr = {"n_estimators": sp_randint(30, 55),
                       "max_depth": sp_randint(9, 12),
                       "learning_rate": sp_uniform(0.5, 0.7)}
-    # param_dist_gbr = {"n_estimators": [132], "max_depth": [10], "learning_rate": [0.6060324]} # zero
-    # param_dist_gbr = {"n_estimators": [100], "max_depth": [3], "learning_rate": [0.3560849]} # mean
-    # GradientBoostingRegressor best_score: 0.84072146393 best_params: {'n_estimators': 100,
-    # 'learning_rate': 0.35608492171567685, 'max_depth': 3}
+    # param_dist_gbr = {"n_estimators": [132], "max_depth": [10],
+    # "learning_rate": [0.6060324]} # zero
+    # param_dist_gbr = {"n_estimators": [100], "max_depth": [3],
+    # "learning_rate": [0.3560849]} # mean
+    # GradientBoostingRegressor best_score: 0.84072146393 best_params:
+    # {'n_estimators': 100, 'learning_rate': 0.35608492171567685,
+    # 'max_depth': 3}
     gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1,
                                     max_depth=40, random_state=0, loss='ls')
     gbr_rs = RandomizedSearchCV(gbr, n_iter=1, cv=5, n_jobs=20,
@@ -500,11 +674,14 @@ if enable_support_vector_regressor:
     #        "epsilon": sp_uniform(1.4, 0.4)}
     # param_dist_svr = {"C": [691802], 'gamma': [0.194720],
     #        "epsilon":[1.4253616]}
-    # SVR best_score: 0.736684495686 best_params: {'epsilon': 1.425361602175401, 'C': 691802.1635233087, 'gamma': 0.1947206879933659}
+    # SVR best_score: 0.736684495686 best_params: {'epsilon': 1.425361602175401,
+    # 'C': 691802.1635233087, 'gamma': 0.1947206879933659}
     param_dist_svr = {"C": [2.0**18.2], "epsilon": [2.2150127]}
-    # SVR best_score: 0.844215154692 best_params: {'epsilon': 2.2150127431750146, 'C': 301124.3815723463}
+    # SVR best_score: 0.844215154692 best_params:
+    # {'epsilon': 2.2150127431750146, 'C': 301124.3815723463}
     svr = SVR(kernel='rbf')
-    svr_rs = RandomizedSearchCV(svr, n_iter=1, cv=5, n_jobs=20, param_distributions=param_dist_svr)
+    svr_rs = RandomizedSearchCV(svr, n_iter=1, cv=5, n_jobs=20,
+                                param_distributions=param_dist_svr)
     svr_rs.fit(X_m2_train, y_m2_train)
     pred_svr_train = svr_rs.predict(X_m2_train)
     pred_svr_val = svr_rs.predict(X_m2_val)
@@ -525,6 +702,7 @@ for (alg, test_set) in test_m2_acc.keys():
     res_sales_df.loc[alg, test_set] = test_m2_acc[(alg, test_set)]
 print(res_sales_df)
 
+############################################################################
 # Third model (M3). Direct computation of expected return
 regression_methods_m3 = []
 test_m3_acc = {}
@@ -536,7 +714,8 @@ if enable_random_forest_regressor_m3:
     param_dist_rfr_m3 = {"max_depth": [15]}  # zero no-padding
     # param_dist_rfr_m3 = {"max_depth": [20]} # zero
     # param_dist_rfr_m3 = {"max_depth": [8]} # mean
-    # RandomForestRegressor best_score: 0.638195402073 best_params: {'max_depth': 8}
+    # RandomForestRegressor best_score: 0.638195402073 best_params:
+    # {'max_depth': 8}
     rfr_m3 = RandomForestRegressor(max_depth=3, random_state=0)
     rfr_rs_m3 = RandomizedSearchCV(rfr_m3, n_iter=1, cv=5, n_jobs=20,
                                    param_distributions=param_dist_rfr_m3)
@@ -562,7 +741,9 @@ if enable_support_vector_regressor_m3:
     #        'gamma': sp_uniform(0.00005, 0.0001),
     #        "epsilon": sp_uniform(0.45, 0.2)}
     param_dist_svr_m3 = {"C": [244589], "epsilon": [0.5315116], 'gamma': [0.00012]}
-    # SVR best_score: 0.767954337244 best_params: {'epsilon': 0.5315115872222275, 'C': 244589.00053342702, 'gamma': 0.000119908712214389}
+    # SVR best_score: 0.767954337244 best_params:
+    # {'epsilon': 0.5315115872222275,
+    # 'C': 244589.00053342702, 'gamma': 0.000119908712214389}
     svr_m3 = SVR(kernel='rbf')
     svr_rs_m3 = RandomizedSearchCV(svr_m3, n_iter=1, cv=5, n_jobs=20,
                                    param_distributions=param_dist_svr_m3)
@@ -588,7 +769,11 @@ for (alg, test_set) in test_m3_acc.keys():
     res_sales_m3_df.loc[alg, test_set] = test_m3_acc[(alg, test_set)]
 print(res_sales_m3_df)
 
-# Computation of expected sales as prob of sale * estimated sale value
+############################################################################
+# Combination of models 1 and 2. This enables the computation of
+# expected sales as prob of sale (by M1) * estimated sale value (by M2)
+# The best 40 % of the leads is preserved and the remaining revenues are
+# computed
 total_revenue_train = target_sales_all[indices_train].sum()
 total_revenue_val = target_sales_all[indices_val].sum()
 total_revenue_test = target_sales_all[indices_test].sum()
@@ -625,6 +810,10 @@ for classification_method in classification_methods:
         prob_train = prob_svc_train[:, 1]
         prob_val = prob_svc_val[:, 1]
         prob_test = prob_svc_test[:, 1]
+    elif classification_method == 'dnn':
+        prob_train = prob_dnn_train[:, 1]
+        prob_val = prob_dnn_val[:, 1]
+        prob_test = prob_dnn_test[:, 1]
     else:
         raise ValueError('Unknown classification_method:',
                          classification_method)
@@ -665,9 +854,12 @@ for classification_method in classification_methods:
         top_promising_sales_indices_val = promising_sales_indices_val[-leads_kept_val:]
         top_promising_sales_indices_test = promising_sales_indices_test[-leads_kept_test:]
         if verbose:
-            print("len(top_promising_sales_indices_train)=", len(top_promising_sales_indices_train))
-            print("len(top_promising_sales_indices_val)=", len(top_promising_sales_indices_val))
-            print("len(top_promising_sales_indices_test)=", len(top_promising_sales_indices_test))
+            print("len(top_promising_sales_indices_train)=",
+                  len(top_promising_sales_indices_train))
+            print("len(top_promising_sales_indices_val)=",
+                  len(top_promising_sales_indices_val))
+            print("len(top_promising_sales_indices_test)=",
+                  len(top_promising_sales_indices_test))
 
         print("classification:", classification_method, "regression:", regression_method)
         e_total_revenue_train_sel = expected_sales_train[top_promising_sales_indices_train].sum()
@@ -723,13 +915,19 @@ for regression_method in regression_methods_m3:
     promising_sales_indices_train_m3 = np.argsort(expected_sales_train_m3)
     promising_sales_indices_val_m3 = np.argsort(expected_sales_val_m3)
     promising_sales_indices_test_m3 = np.argsort(expected_sales_test_m3)
-    top_promising_sales_indices_train_m3 = promising_sales_indices_train_m3[-leads_kept_train:]
-    top_promising_sales_indices_val_m3 = promising_sales_indices_val_m3[-leads_kept_val:]
-    top_promising_sales_indices_test_m3 = promising_sales_indices_test_m3[-leads_kept_test:]
+    top_promising_sales_indices_train_m3 = \
+        promising_sales_indices_train_m3[-leads_kept_train:]
+    top_promising_sales_indices_val_m3 = \
+        promising_sales_indices_val_m3[-leads_kept_val:]
+    top_promising_sales_indices_test_m3 = \
+        promising_sales_indices_test_m3[-leads_kept_test:]
     
-    e_total_revenue_train_sel_m3 = expected_sales_train_m3[top_promising_sales_indices_train_m3].sum()
-    e_total_revenue_val_sel_m3 = expected_sales_val_m3[top_promising_sales_indices_val_m3].sum()
-    e_total_revenue_test_sel_m3 = expected_sales_test_m3[top_promising_sales_indices_test_m3].sum()
+    e_total_revenue_train_sel_m3 = \
+        expected_sales_train_m3[top_promising_sales_indices_train_m3].sum()
+    e_total_revenue_val_sel_m3 = \
+        expected_sales_val_m3[top_promising_sales_indices_val_m3].sum()
+    e_total_revenue_test_sel_m3 = \
+        expected_sales_test_m3[top_promising_sales_indices_test_m3].sum()
     if verbose:
         print("e_total_revenue_train_sel_m3", e_total_revenue_train_sel_m3)
         print("e_total_revenue_val_sel_m3", e_total_revenue_val_sel_m3)
@@ -745,6 +943,7 @@ for regression_method in regression_methods_m3:
     print("total_revenue_test_sel_m3", total_revenue_test_sel_m3,
           '(%f)' % (100 * total_revenue_test_sel_m3/total_revenue_test))
 
+############################################################################
 # Variable importances
 if verbose:
     print("Variable importances m1: ", rf_rs.best_estimator_.feature_importances_)
@@ -760,3 +959,4 @@ var_importances_pd = pd.DataFrame(var_importances,
                                                                        ascending=False)
 
 print("Variable importances:\n", var_importances_pd)
+print("Variables ordered by importance:", var_importances_pd.index.tolist())
