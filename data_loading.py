@@ -22,10 +22,10 @@ def read_data(filename):
     # print("data.describe()\n", data.describe())
 
     # Why was this weird column name used? '\xef\xbb\xbfID'
-    id_df = data['ID'] # ID
-    target_sold_df = data['Target_Sold'] # ).copy()
-    target_sales_df = data['Target_Sales'] # ).copy()
-    data = data.drop(['ID', 'Target_Sold', 'Target_Sales'], axis=1)
+    id_df = data['Index'] # I
+    target_sold_df = data['Contract_Closed'] # ).copy()
+    target_sales_df = data['Contract_Value'] # ).copy()
+    data = data.drop(['Index', 'Contract_Closed', 'Contract_Value'], axis=1)
     return data, id_df, target_sold_df, target_sales_df
 
 

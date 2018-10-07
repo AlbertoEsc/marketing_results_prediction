@@ -62,7 +62,7 @@ from tensorflow_data_processing import extract_pred_and_prob_from_estimator_pred
 ############################################################################
 # Configuration. These variables specify what parts of
 # the whole analysis are executed
-filename = 'data/testdata.csv'
+filename = 'data/contract_data.csv'
 explanations_filename = 'data/variable_explanations.csv'
 NUMPY_SEED = 12345
 enable_feature_selection = False # or True

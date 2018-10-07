@@ -1,11 +1,10 @@
 # Marketing Results Prediction
 
-*Marketing Results Prediction* is a Data Science exercise/project that uses supervised learning methods to understand and predict the success of a marketing strategy on individual customers.
+*Marketing Results Prediction* is an exercise/project that uses supervised learning methods to understand and predict the success of a marketing strategy on individual customers.
 The resulting models allow the sales team to reduce their marketing efforts by focusing on the most promising customers, who are identified based on their corresponding expected return.
 
 ## Data
 The data is contained in a single CSV file that describes previous marketing results on different customers. Each row represents a customer and the different interactions that have already taken place. There are two two important fields (variables/predictors) within each row: *contract closed* (a binary variable) and *contract value* (a non-negative float value). These two fields are the labels that are predicted. The semantics of the remaining about 50 fields are not known, but most of  them are indeed useful to estimate the labels.
-The data is **not publicly available yet.**
 
 ## Solution 
 In order to estimate the expected contract value as accurately as possible, which involves computing the probability that a contract is closed and of the contract value, three models are built for the proposed solution.
