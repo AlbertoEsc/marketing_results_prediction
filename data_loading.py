@@ -26,6 +26,11 @@ def read_data(filename):
     target_sold_df = data['Contract_Closed'] # ).copy()
     target_sales_df = data['Contract_Value'] # ).copy()
     data = data.drop(['Index', 'Contract_Closed', 'Contract_Value'], axis=1)
+    #print(list(data.columns))
+    #quit()
+    if 'Unnamed: 0' in list(data.columns):
+        data = data.drop(['Unnamed: 0'], axis=1)
+        #quit()
     return data, id_df, target_sold_df, target_sales_df
 
 
