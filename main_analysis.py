@@ -707,10 +707,10 @@ if enable_support_vector_regressor:
 # M2. DNNRegressor
 if enable_dnn_regressor:
     eval_batch_size = 1000
-    num_iter_dnn = 1
+    num_iter_dnn = 100
 
     print('Training a DNNRegressor')
-    tf.logging.set_verbosity(tf.logging.INFO)
+    # tf.logging.set_verbosity(tf.logging.INFO)
     my_feature_columns = []
 
     X_m2_train_df = pd.DataFrame(data=X_m2_train, columns=data_df.columns)
@@ -724,13 +724,13 @@ if enable_dnn_regressor:
         my_feature_columns.append(tf.feature_column.numeric_column(key=key))
 
     # train_steps = 15000  # 20000
-    param_dist_dnn = {'batch_size': [70, 75, 80, 85],
-                      'hidden_0': [55, 60, 65],
-                      'hidden_1': [10, 13, 15, 17],
-                      'hidden_2': [10, 11, 12],
-                      'dropout': [0.11, 0.12, 0.13, 0.14, 0.15, 0.16],
+    param_dist_dnn = {'batch_size': [50, 55, 60, 65, 70, 75, 80, 85],
+                      'hidden_0': [40, 45, 50, 55, 60, 65],
+                      'hidden_1': [7, 10, 13, 15, 17,20],
+                      'hidden_2': [6, 8, 10, 12, 14, 16],
+                      'dropout': [0.1, 0.15, 0.20, 0.25, 0.30, 0.35],
                       'batch_norm': [False],  # Not available in TF 1.8
-                      'train_steps': [1000]} # [7500, 10000, 12500, 15000]}
+                      'train_steps':  [2500, 5000, 7500, 10000, 12500]}
 
     best_params = None
     best_model = None
@@ -1002,7 +1002,7 @@ for classification_method in classification_methods:
         promising_sales_indices_train = np.argsort(expected_sales_train)
         promising_sales_indices_val = np.argsort(expected_sales_val)
         promising_sales_indices_test = np.argsort(expected_sales_test)
-
+        print('classification_method:', classification_method, 'regression_method:', regression_method)
         top_promising_sales_indices_train = promising_sales_indices_train[-leads_kept_train:]
         top_promising_sales_indices_val = promising_sales_indices_val[-leads_kept_val:]
         top_promising_sales_indices_test = promising_sales_indices_test[-leads_kept_test:]
@@ -1029,8 +1029,9 @@ for classification_method in classification_methods:
               '(%f)' % (100 * total_revenue_train_sel/total_revenue_train))
         print("total_revenue_val_sel", total_revenue_val_sel,
               '(%f)' % (100 * total_revenue_val_sel/total_revenue_val))
-        print("total_revenue_test_sel", total_revenue_test_sel,
-              '(%f)' % (100 * total_revenue_test_sel/total_revenue_test))
+        if evaluate_test_data:
+            print("total_revenue_test_sel", total_revenue_test_sel,
+                  '(%f)' % (100 * total_revenue_test_sel/total_revenue_test))
 
         cum_sum = target_sales_all[indices_val][promising_sales_indices_val[::-1]].cumsum()
         efficiency = 100 * cum_sum / total_revenue_val
