@@ -28,7 +28,7 @@ def train_input_fn(features, labels, batch_size):
 
 def eval_input_fn(features, labels, batch_size):
     """An input function for evaluation or prediction"""
-    features=dict(features)
+    features = dict(features)
     if labels is None:
         # No labels, use only features.
         inputs = features
@@ -57,3 +57,15 @@ def extract_pred_and_prob_from_estimator_predictions(predictions):
     num_samples = len(pred)
     prob = prob.reshape((num_samples, -1))
     return pred, prob
+
+def extract_pred_from_estimator_predictions(predictions):
+    """From a prediction object computed by the estimator, this function
+    extracts the prediction ('prediction') them
+    as a numpy array. """
+    # print('predictions:', predictions)
+    pred = np.array([])
+    for prediction in predictions:
+        pred = np.append(pred, prediction['predictions'])
+    num_samples = len(pred)
+    pred = pred.reshape((num_samples, -1))
+    return pred

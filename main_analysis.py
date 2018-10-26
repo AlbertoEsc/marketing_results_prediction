@@ -58,6 +58,7 @@ from correlation_analysis import analyze_correlation_matrix
 from tensorflow_data_processing import train_input_fn
 from tensorflow_data_processing import eval_input_fn
 from tensorflow_data_processing import extract_pred_and_prob_from_estimator_predictions
+from tensorflow_data_processing import extract_pred_from_estimator_predictions
 
 ############################################################################
 # Configuration. These variables specify what parts of
@@ -75,13 +76,14 @@ enable_linear_regression_for_sold = False
 enable_random_forest_classifier = True
 enable_gradient_boosting_classifier = False 
 enable_support_vector_classifier = False 
-enable_dnn_classifier = True
+enable_dnn_classifier = False
 
 enable_linear_regression_for_sales = False 
 enable_ridge_regression = False 
 enable_random_forest_regressor = True
 enable_gradient_boosting_regressor = False 
 enable_support_vector_regressor = False 
+enable_dnn_regressor = True
 
 enable_random_forest_regressor_m3 = False or True
 enable_support_vector_regressor_m3 = False
@@ -413,19 +415,24 @@ if enable_support_vector_classifier:
           "best_params:", svc_rs.best_params_)
     classification_methods.append('svc')
 
-eval_batch_size = 1000
-num_iter_dnn = 2
-if enable_dnn_classifier:
-    print('Training a DNNClassifier')
-    # tf.logging.set_verbosity(tf.logging.INFO)
-    my_feature_columns = []
-
+if enable_dnn_classifier or enable_dnn_regressor:
     X_train_df = pd.DataFrame(data=X_train, columns=data_df.columns)
     X_val_df = pd.DataFrame(data=X_val, columns=data_df.columns)
     X_test_df = pd.DataFrame(data=X_test, columns=data_df.columns)
-    y_train_df = pd.DataFrame(data=y_train, columns=['label_1'])
-    y_val_df = pd.DataFrame(data=y_val, columns=['label_1'])
-    y_test_df = pd.DataFrame(data=y_test, columns=['label_1'])
+    y1_train_df = pd.DataFrame(data=y_train, columns=['label_1'])
+    y1_val_df = pd.DataFrame(data=y_val, columns=['label_1'])
+    y1_test_df = pd.DataFrame(data=y_test, columns=['label_1'])
+    y2_train_df = pd.DataFrame(data=y_train, columns=['label_2'])
+    y2_val_df = pd.DataFrame(data=y_val, columns=['label_2'])
+    y2_test_df = pd.DataFrame(data=y_test, columns=['label_2'])
+
+if enable_dnn_classifier:
+    eval_batch_size = 1000
+    num_iter_dnn = 1
+
+    print('Training a DNNClassifier')
+    # tf.logging.set_verbosity(tf.logging.INFO)
+    my_feature_columns = []
 
     for key in X_train_df.keys():
         my_feature_columns.append(tf.feature_column.numeric_column(key=key))
@@ -480,12 +487,12 @@ if enable_dnn_classifier:
         # Train the Model.
         dnn.train(
             input_fn=lambda: train_input_fn(X_train_df,
-                                            y_train_df, batch_size),
+                                            y1_train_df, batch_size),
             steps=train_steps)
 
         # Evaluate the model.
         eval_result = dnn.evaluate(
-            input_fn=lambda: eval_input_fn(X_val_df, y_val_df, batch_size))
+            input_fn=lambda: eval_input_fn(X_val_df, y1_val_df, batch_size))
 
         # print('Test set accuracy: {accuracy:0.3f}'.format(**eval_result))
 
@@ -546,7 +553,7 @@ if enable_dnn_classifier:
 
     classification_methods.append('dnn')
 
-print(test_acc)
+    print(test_acc)
 
 res_sold_df = pd.DataFrame()
 for (alg, test_set) in test_acc.keys():
@@ -697,6 +704,133 @@ if enable_support_vector_regressor:
           "best_params:", svr_rs.best_params_)
     regression_methods.append('svr')
 
+# M2. DNNRegressor
+if enable_dnn_regressor:
+    eval_batch_size = 1000
+    num_iter_dnn = 1
+
+    print('Training a DNNRegressor')
+    tf.logging.set_verbosity(tf.logging.INFO)
+    my_feature_columns = []
+
+    X_m2_train_df = pd.DataFrame(data=X_m2_train, columns=data_df.columns)
+    X_m2_val_df = pd.DataFrame(data=X_m2_val, columns=data_df.columns)
+    X_m2_test_df = pd.DataFrame(data=X_m2_test, columns=data_df.columns)
+    y_m2_train_df = pd.DataFrame(data=y_m2_train, columns=['label_2'])
+    y_m2_val_df = pd.DataFrame(data=y_m2_val, columns=['label_2'])
+    y_m2_test_df = pd.DataFrame(data=y_m2_test, columns=['label_2'])
+
+    for key in X_m2_train_df.keys():
+        my_feature_columns.append(tf.feature_column.numeric_column(key=key))
+
+    # train_steps = 15000  # 20000
+    param_dist_dnn = {'batch_size': [70, 75, 80, 85],
+                      'hidden_0': [55, 60, 65],
+                      'hidden_1': [10, 13, 15, 17],
+                      'hidden_2': [10, 11, 12],
+                      'dropout': [0.11, 0.12, 0.13, 0.14, 0.15, 0.16],
+                      'batch_norm': [False],  # Not available in TF 1.8
+                      'train_steps': [1000]} # [7500, 10000, 12500, 15000]}
+
+    best_params = None
+    best_model = None
+    best_MSE_val = None
+    for i in range(num_iter_dnn):
+        param_list = list(ParameterSampler(param_dist_dnn, n_iter=1))[0]
+        print('Parameters for DNNRegressor:', param_list)
+        batch_size = param_list['batch_size']
+        hidden_0 = param_list['hidden_0']
+        hidden_1 = param_list['hidden_1']
+        hidden_2 = param_list['hidden_2']
+        dropout = param_list['dropout']
+        batch_norm = param_list['batch_norm']
+        train_steps = param_list['train_steps']
+
+        # Build 3 hidden layer DNN with hidden_0 -- hidden_2 units respectively
+        dnnr = tf.estimator.DNNRegressor(
+            feature_columns=my_feature_columns,
+            # Two hidden layers of 10 nodes each.
+            hidden_units=[hidden_0, hidden_1, hidden_2],
+            # The model estimates a single label
+            label_dimension=1,
+            # batch_norm=batch_norm,
+            optimizer='Adam',
+            dropout=dropout)  # dropout probability
+
+        # Train the Model.
+        dnnr.train(
+            input_fn=lambda: train_input_fn(X_m2_train_df,
+                                            y_m2_train_df, batch_size),
+            steps=train_steps)
+
+        # Evaluate the model.
+        eval_result = dnnr.evaluate(
+            input_fn=lambda: eval_input_fn(X_m2_val_df, y_m2_val_df, batch_size))
+
+        # print('Test set accuracy: {accuracy:0.3f}'.format(**eval_result))
+
+        pred_dnnr_train = dnnr.predict(
+            input_fn=lambda: eval_input_fn(X_m2_train_df, None, batch_size),
+            yield_single_examples=True)
+        pred_dnnr_train = \
+            extract_pred_from_estimator_predictions(pred_dnnr_train)
+        pred_dnnr_val = dnnr.predict(
+            input_fn=lambda: eval_input_fn(X_m2_val_df, None, batch_size),
+            yield_single_examples=True)
+        pred_dnnr_val = \
+            extract_pred_from_estimator_predictions(pred_dnnr_val)
+        if evaluate_test_data:
+            pred_dnnr_test = dnnr.predict(
+                input_fn=lambda: eval_input_fn(X_m2_test_df, None, batch_size),
+                yield_single_examples=True)
+            pred_dnnr_test = \
+                extract_pred_from_estimator_predictions(pred_dnnr_test)
+        else:
+            pred_dnnr_test = None
+        print('y_m2_train:', y_m2_train)
+        print('len(y_m2_train):', len(y_m2_train))
+        print('len(pred_dnnr_train):', len(pred_dnnr_train))
+
+        MSE_train = test_m2_acc[('DNNR_MSE', 'train')] = \
+            mean_squared_error(y_m2_train, pred_dnnr_train)
+        MSE_val = test_m2_acc[('DNNR_MSE', 'val')] = \
+            mean_squared_error(y_m2_val, pred_dnnr_val)
+        if evaluate_test_data:
+            MSE_test = test_m2_acc[('DNNR_MSE', 'test')] = \
+                mean_squared_error(y_m2_test, pred_dnnr_test)
+        else:
+            MSE_test = None
+        print('MSE train:', test_m2_acc[('DNNR_MSE', 'train')])
+        print('MSE validation:', test_m2_acc[('DNNR_MSE', 'val')])
+
+        # Select best model according to MSE (validation data)
+        # TODO: Order all results by increasing CE and display for analysis
+        # instead of keeping just the best CE
+        if best_MSE_val is None or best_MSE_val > MSE_val:
+            best_MSE_train = MSE_train
+            best_MSE_val = MSE_val
+            best_MSE_test = MSE_test
+            best_MSE_train = MSE_train
+            best_MSE_val = MSE_val
+            best_MSE_test = MSE_test
+            best_params = param_list
+            best_model = dnnr
+            best_pred_dnnr_train = pred_dnnr_train
+            best_pred_dnnr_val = pred_dnnr_val
+            best_pred_dnnr_test = pred_dnnr_test
+
+    print('best params:', best_params)
+    print('best MSE validation:', best_MSE_val)
+    test_acc[('DNNR_MSE', 'train')] = best_MSE_train
+    test_acc[('DNNR_MSE', 'val')] = best_MSE_val
+    pred_dnnr_train = best_pred_dnnr_train
+    pred_dnnr_val = best_pred_dnnr_val
+    pred_dnnr_test = best_pred_dnnr_test
+
+    regression_methods.append('dnnr')
+
+    print(test_acc)
+
 res_sales_df = pd.DataFrame()
 for (alg, test_set) in test_m2_acc.keys():
     res_sales_df.loc[alg, test_set] = test_m2_acc[(alg, test_set)]
@@ -839,6 +973,22 @@ for classification_method in classification_methods:
             pred_train = svr_rs.predict(X_train)
             pred_val = svr_rs.predict(X_val)
             pred_test = svr_rs.predict(X_test)
+        elif regression_method == 'dnnr':
+            pred_train = dnnr.predict(
+                input_fn=lambda: eval_input_fn(X_train_df, None, batch_size),
+                yield_single_examples=True)
+            pred_train = \
+                extract_pred_from_estimator_predictions(pred_train)
+            pred_val = dnnr.predict(
+                input_fn=lambda: eval_input_fn(X_val_df, None, batch_size),
+                yield_single_examples=True)
+            pred_val = \
+                extract_pred_from_estimator_predictions(pred_val)
+            pred_test = dnnr.predict(
+                input_fn=lambda: eval_input_fn(X_test_df, None, batch_size),
+                yield_single_examples=True)
+            pred_test = \
+                extract_pred_from_estimator_predictions(pred_test)
         else:
             raise ValueError('Unknown regression_method:', regression_method)
 
@@ -862,6 +1012,9 @@ for classification_method in classification_methods:
                   len(top_promising_sales_indices_test))
 
         print("classification:", classification_method, "regression:", regression_method)
+        print(type(expected_sales_train), type(top_promising_sales_indices_train))
+        print('len(expected_sales_train):', len(expected_sales_train))
+        print('len(top_promising_sales_indices_train):', len(top_promising_sales_indices_train))
         e_total_revenue_train_sel = expected_sales_train[top_promising_sales_indices_train].sum()
         e_total_revenue_val_sel = expected_sales_val[top_promising_sales_indices_val].sum()
         e_total_revenue_test_sel = expected_sales_test[top_promising_sales_indices_test].sum()
