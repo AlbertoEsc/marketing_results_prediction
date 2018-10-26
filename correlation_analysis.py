@@ -16,6 +16,8 @@ from sklearn.decomposition import PCA
 from matplotlib import pyplot as plt
 from matplotlib import cm as cm
 import pandas as pd
+from sklearn.metrics import mean_squared_error
+
 
 def analyze_correlation_matrix(sold_df, sales_df, data_df):
     all_data_df = pd.concat([sold_df, sales_df, data_df], axis=1) # , data_df
@@ -52,6 +54,7 @@ def normalize_sold_sales_data(sold, sales, data):
                            data), axis=1)
     return data_all
 
+
 def analyze_using_PCA(sold, sales, data):
     data = normalize_sold_sales_data(sold, sales, data)
 
@@ -67,3 +70,7 @@ def analyze_using_PCA(sold, sales, data):
     print('pca.components_[0]:', pca.components_[0])
     print('pca.components_[1]:', pca.components_[1])
     print('pca.components_[2]:', pca.components_[2])
+
+
+def root_mean_squared_error(y_gt, y_pred):
+    return mean_squared_error(y_gt, y_pred) ** 0.5

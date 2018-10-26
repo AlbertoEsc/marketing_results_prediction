@@ -55,6 +55,7 @@ from data_loading import split_data
 from null_handling import remove_nulls
 from correlation_analysis import analyze_using_PCA
 from correlation_analysis import analyze_correlation_matrix
+from correlation_analysis import root_mean_squared_error
 from tensorflow_data_processing import train_input_fn
 from tensorflow_data_processing import eval_input_fn
 from tensorflow_data_processing import extract_pred_and_prob_from_estimator_predictions
@@ -222,9 +223,9 @@ X_m2_test = (X_m2_test - X_train_mean) / X_train_std
 test_acc = {}
 classification_methods = []
 # M1. ChanceLevel estimations
-# test_acc[('ChanceLevel_MSE', 'train')] = mean_squared_error(y_train,
+# test_acc[('ChanceLevel_RMSE', 'train')] = root_mean_squared_error(y_train,
 # y_train.mean() * np.ones_like(y_train))
-# test_acc[('ChanceLevel_MSE', 'val')] = mean_squared_error(y_val,
+# test_acc[('ChanceLevel_RMSE', 'val')] = root_mean_squared_error(y_val,
 # y_val.mean() * np.ones_like(y_val))
 
 test_acc[('ChanceLevel_CR', 'train')] = \
@@ -565,13 +566,13 @@ print(res_sold_df)
 test_m2_acc = {}
 regression_methods = []
 # Chance levels
-test_m2_acc[('ChanceLevel_MSE', 'train')] = \
-    mean_squared_error(y_m2_train, y_m2_train.mean() * np.ones_like(y_m2_train))
-test_m2_acc[('ChanceLevel_MSE', 'val')] = \
-    mean_squared_error(y_m2_val, y_m2_val.mean() * np.ones_like(y_m2_val))
+test_m2_acc[('ChanceLevel_RMSE', 'train')] = \
+    root_mean_squared_error(y_m2_train, y_m2_train.mean() * np.ones_like(y_m2_train))
+test_m2_acc[('ChanceLevel_RMSE', 'val')] = \
+    root_mean_squared_error(y_m2_val, y_m2_val.mean() * np.ones_like(y_m2_val))
 if evaluate_test_data:
-    test_m2_acc[('ChanceLevel_MSE', 'test')] = \
-        mean_squared_error(y_m2_test, y_m2_test.mean() *
+    test_m2_acc[('ChanceLevel_RMSE', 'test')] = \
+        root_mean_squared_error(y_m2_test, y_m2_test.mean() *
                            np.ones_like(y_m2_test))
 
 # M2. LinearRegression
@@ -581,13 +582,13 @@ if enable_linear_regression_for_sales:
     pred_lr_train = lr_m2.predict(X_m2_train)
     pred_lr_val = lr_m2.predict(X_m2_val)
     pred_lr_test = lr_m2.predict(X_m2_test)
-    test_m2_acc[('LinearRegression_MSE', 'train')] = \
-        mean_squared_error(y_m2_train, pred_lr_train)
-    test_m2_acc[('LinearRegression_MSE', 'val')] = \
-        mean_squared_error(y_m2_val, pred_lr_val)
+    test_m2_acc[('LinearRegression_RMSE', 'train')] = \
+        root_mean_squared_error(y_m2_train, pred_lr_train)
+    test_m2_acc[('LinearRegression_RMSE', 'val')] = \
+        root_mean_squared_error(y_m2_val, pred_lr_val)
     if evaluate_test_data:
-        test_m2_acc[('LinearRegression_MSE', 'test')] = \
-            mean_squared_error(y_m2_test, pred_lr_test)
+        test_m2_acc[('LinearRegression_RMSE', 'test')] = \
+            root_mean_squared_error(y_m2_test, pred_lr_test)
     regression_methods.append('lr')
 
 # M2. Ridge regression
@@ -606,13 +607,13 @@ if enable_ridge_regression:
     pred_rid_train = rid_rs.predict(X_m2_train)
     pred_rid_val = rid_rs.predict(X_m2_val)
     pred_rid_test = rid_rs.predict(X_m2_test)
-    test_m2_acc[('Ridge_MSE', 'train')] = \
-        mean_squared_error(y_m2_train, pred_rid_train)
-    test_m2_acc[('Ridge_MSE', 'val')] = \
-        mean_squared_error(y_m2_val, pred_rid_val)
+    test_m2_acc[('Ridge_RMSE', 'train')] = \
+        root_mean_squared_error(y_m2_train, pred_rid_train)
+    test_m2_acc[('Ridge_RMSE', 'val')] = \
+        root_mean_squared_error(y_m2_val, pred_rid_val)
     if evaluate_test_data:
-        test_m2_acc[('Ridge_MSE', 'test')] = \
-            mean_squared_error(y_m2_test, pred_rid_test)
+        test_m2_acc[('Ridge_RMSE', 'test')] = \
+            root_mean_squared_error(y_m2_test, pred_rid_test)
     print("Ridge best_score:", rid_rs.best_score_,
           "best_params:", rid_rs.best_params_)
     regression_methods.append('rid')
@@ -630,13 +631,13 @@ if enable_random_forest_regressor:
     pred_rfr_train = rfr_rs.predict(X_m2_train)
     pred_rfr_val = rfr_rs.predict(X_m2_val)
     pred_rfr_test = rfr_rs.predict(X_m2_test)
-    test_m2_acc[('RandomForestRegressor_MSE', 'train')] = \
-        mean_squared_error(y_m2_train, pred_rfr_train)
-    test_m2_acc[('RandomForestRegressor_MSE', 'val')] = \
-        mean_squared_error(y_m2_val, pred_rfr_val)
+    test_m2_acc[('RandomForestRegressor_RMSE', 'train')] = \
+        root_mean_squared_error(y_m2_train, pred_rfr_train)
+    test_m2_acc[('RandomForestRegressor_RMSE', 'val')] = \
+        root_mean_squared_error(y_m2_val, pred_rfr_val)
     if evaluate_test_data:
-        test_m2_acc[('RandomForestRegressor_MSE', 'test')] = \
-            mean_squared_error(y_m2_test, pred_rfr_test)
+        test_m2_acc[('RandomForestRegressor_RMSE', 'test')] = \
+            root_mean_squared_error(y_m2_test, pred_rfr_test)
     print("RandomForestRegressor best_score:", rfr_rs.best_score_,
           "best_params:", rfr_rs.best_params_)
     regression_methods.append('rfr')
@@ -662,13 +663,13 @@ if enable_gradient_boosting_regressor:
     pred_gbr_train = gbr_rs.predict(X_m2_train)
     pred_gbr_val = gbr_rs.predict(X_m2_val)
     pred_gbr_test = gbr_rs.predict(X_m2_test)
-    test_m2_acc[('GradientBoostingRegressor_MSE', 'train')] = \
-        mean_squared_error(y_m2_train, pred_gbr_train)
-    test_m2_acc[('GradientBoostingRegressor_MSE', 'val')] = \
-        mean_squared_error(y_m2_val, pred_gbr_val)
+    test_m2_acc[('GradientBoostingRegressor_RMSE', 'train')] = \
+        root_mean_squared_error(y_m2_train, pred_gbr_train)
+    test_m2_acc[('GradientBoostingRegressor_RMSE', 'val')] = \
+        root_mean_squared_error(y_m2_val, pred_gbr_val)
     if evaluate_test_data:
-        test_m2_acc[('GradientBoostingRegressor_MSE', 'test')] = \
-            mean_squared_error(y_m2_test, pred_gbr_test)
+        test_m2_acc[('GradientBoostingRegressor_RMSE', 'test')] = \
+            root_mean_squared_error(y_m2_test, pred_gbr_test)
     print("GradientBoostingRegressor best_score:", gbr_rs.best_score_,
           "best_params:", gbr_rs.best_params_)
     regression_methods.append('gbr')
@@ -693,13 +694,13 @@ if enable_support_vector_regressor:
     pred_svr_train = svr_rs.predict(X_m2_train)
     pred_svr_val = svr_rs.predict(X_m2_val)
     pred_svr_test = svr_rs.predict(X_m2_test)
-    test_m2_acc[('SVR_MSE', 'train')] = \
-        mean_squared_error(y_m2_train, pred_svr_train)
-    test_m2_acc[('SVR_MSE', 'val')] = \
-        mean_squared_error(y_m2_val, pred_svr_val)
+    test_m2_acc[('SVR_RMSE', 'train')] = \
+        root_mean_squared_error(y_m2_train, pred_svr_train)
+    test_m2_acc[('SVR_RMSE', 'val')] = \
+        root_mean_squared_error(y_m2_val, pred_svr_val)
     if evaluate_test_data:
-        test_m2_acc[('SVR_MSE', 'test')] = \
-            mean_squared_error(y_m2_test, pred_svr_test)
+        test_m2_acc[('SVR_RMSE', 'test')] = \
+            root_mean_squared_error(y_m2_test, pred_svr_test)
     print("SVR best_score:", svr_rs.best_score_,
           "best_params:", svr_rs.best_params_)
     regression_methods.append('svr')
@@ -707,7 +708,7 @@ if enable_support_vector_regressor:
 # M2. DNNRegressor
 if enable_dnn_regressor:
     eval_batch_size = 1000
-    num_iter_dnn = 100
+    num_iter_dnn = 2
 
     print('Training a DNNRegressor')
     # tf.logging.set_verbosity(tf.logging.INFO)
@@ -734,7 +735,7 @@ if enable_dnn_regressor:
 
     best_params = None
     best_model = None
-    best_MSE_val = None
+    best_RMSE_val = None
     for i in range(num_iter_dnn):
         param_list = list(ParameterSampler(param_dist_dnn, n_iter=1))[0]
         print('Parameters for DNNRegressor:', param_list)
@@ -791,28 +792,28 @@ if enable_dnn_regressor:
         print('len(y_m2_train):', len(y_m2_train))
         print('len(pred_dnnr_train):', len(pred_dnnr_train))
 
-        MSE_train = test_m2_acc[('DNNR_MSE', 'train')] = \
-            mean_squared_error(y_m2_train, pred_dnnr_train)
-        MSE_val = test_m2_acc[('DNNR_MSE', 'val')] = \
-            mean_squared_error(y_m2_val, pred_dnnr_val)
+        RMSE_train = test_m2_acc[('DNNR_RMSE', 'train')] = \
+            root_mean_squared_error(y_m2_train, pred_dnnr_train)
+        RMSE_val = test_m2_acc[('DNNR_RMSE', 'val')] = \
+            root_mean_squared_error(y_m2_val, pred_dnnr_val)
         if evaluate_test_data:
-            MSE_test = test_m2_acc[('DNNR_MSE', 'test')] = \
-                mean_squared_error(y_m2_test, pred_dnnr_test)
+            RMSE_test = test_m2_acc[('DNNR_RMSE', 'test')] = \
+                root_mean_squared_error(y_m2_test, pred_dnnr_test)
         else:
-            MSE_test = None
-        print('MSE train:', test_m2_acc[('DNNR_MSE', 'train')])
-        print('MSE validation:', test_m2_acc[('DNNR_MSE', 'val')])
+            RMSE_test = None
+        print('RMSE train:', test_m2_acc[('DNNR_RMSE', 'train')])
+        print('RMSE validation:', test_m2_acc[('DNNR_RMSE', 'val')])
 
-        # Select best model according to MSE (validation data)
+        # Select best model according to RMSE (validation data)
         # TODO: Order all results by increasing CE and display for analysis
         # instead of keeping just the best CE
-        if best_MSE_val is None or best_MSE_val > MSE_val:
-            best_MSE_train = MSE_train
-            best_MSE_val = MSE_val
-            best_MSE_test = MSE_test
-            best_MSE_train = MSE_train
-            best_MSE_val = MSE_val
-            best_MSE_test = MSE_test
+        if best_RMSE_val is None or best_RMSE_val > RMSE_val:
+            best_RMSE_train = RMSE_train
+            best_RMSE_val = RMSE_val
+            best_RMSE_test = RMSE_test
+            best_RMSE_train = RMSE_train
+            best_RMSE_val = RMSE_val
+            best_RMSE_test = RMSE_test
             best_params = param_list
             best_model = dnnr
             best_pred_dnnr_train = pred_dnnr_train
@@ -820,16 +821,16 @@ if enable_dnn_regressor:
             best_pred_dnnr_test = pred_dnnr_test
 
     print('best params:', best_params)
-    print('best MSE validation:', best_MSE_val)
-    test_acc[('DNNR_MSE', 'train')] = best_MSE_train
-    test_acc[('DNNR_MSE', 'val')] = best_MSE_val
+    print('best MSE validation:', best_RMSE_val)
+    test_m2_acc[('DNNR_RMSE', 'train')] = best_RMSE_train
+    test_m2_acc[('DNNR_RMSE', 'val')] = best_RMSE_val
     pred_dnnr_train = best_pred_dnnr_train
     pred_dnnr_val = best_pred_dnnr_val
     pred_dnnr_test = best_pred_dnnr_test
 
     regression_methods.append('dnnr')
 
-    print(test_acc)
+    print(test_m2_acc)
 
 res_sales_df = pd.DataFrame()
 for (alg, test_set) in test_m2_acc.keys():
@@ -857,13 +858,13 @@ if enable_random_forest_regressor_m3:
     pred_rfr_train_m3 = rfr_rs_m3.predict(X_m3_train)
     pred_rfr_val_m3 = rfr_rs_m3.predict(X_m3_val)
     pred_rfr_test_m3 = rfr_rs_m3.predict(X_m3_test)
-    test_m3_acc[('RandomForestRegressor_MSE', 'train')] = \
-        mean_squared_error(y_m3_train, pred_rfr_train_m3)
-    test_m3_acc[('RandomForestRegressor_MSE', 'val')] = \
-        mean_squared_error(y_m3_val, pred_rfr_val_m3)
+    test_m3_acc[('RandomForestRegressor_RMSE', 'train')] = \
+        root_mean_squared_error(y_m3_train, pred_rfr_train_m3)
+    test_m3_acc[('RandomForestRegressor_RMSE', 'val')] = \
+        root_mean_squared_error(y_m3_val, pred_rfr_val_m3)
     if evaluate_test_data:
-        test_m3_acc[('RandomForestRegressor_MSE', 'test')] = \
-            mean_squared_error(y_m3_test, pred_rfr_test_m3)
+        test_m3_acc[('RandomForestRegressor_RMSE', 'test')] = \
+            root_mean_squared_error(y_m3_test, pred_rfr_test_m3)
     print("RandomForestRegressor best_score:", rfr_rs_m3.best_score_,
           "best_params:", rfr_rs_m3.best_params_)
     regression_methods_m3.append('rfr')
@@ -885,13 +886,13 @@ if enable_support_vector_regressor_m3:
     pred_svr_train_m3 = svr_rs_m3.predict(X_m3_train)
     pred_svr_val_m3 = svr_rs_m3.predict(X_m3_val)
     pred_svr_test_m3 = svr_rs_m3.predict(X_m3_test)
-    test_m3_acc[('SVR_MSE', 'train')] = \
-        mean_squared_error(y_m3_train, pred_svr_train_m3)
-    test_m3_acc[('SVR_MSE', 'val')] = \
-        mean_squared_error(y_m3_val, pred_svr_val_m3)
+    test_m3_acc[('SVR_RMSE', 'train')] = \
+        root_mean_squared_error(y_m3_train, pred_svr_train_m3)
+    test_m3_acc[('SVR_RMSE', 'val')] = \
+        root_mean_squared_error(y_m3_val, pred_svr_val_m3)
     if evaluate_test_data:
-        test_m3_acc[('SVR_MSE', 'test')] = \
-            mean_squared_error(y_m3_test, pred_svr_test_m3)
+        test_m3_acc[('SVR_RMSE', 'test')] = \
+            root_mean_squared_error(y_m3_test, pred_svr_test_m3)
     print("SVR best_score:", svr_rs_m3.best_score_,
           "best_params:", svr_rs_m3.best_params_)
     regression_methods_m3.append('svr')
