@@ -67,5 +67,5 @@ def extract_pred_from_estimator_predictions(predictions):
     for prediction in predictions:
         pred = np.append(pred, prediction['predictions'])
     num_samples = len(pred)
-    pred = pred.reshape((num_samples, -1))
+    pred = pred.reshape((num_samples, ))
     return pred

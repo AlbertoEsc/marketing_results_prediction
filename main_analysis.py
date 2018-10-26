@@ -850,7 +850,7 @@ if enable_random_forest_regressor_m3:
     # param_dist_rfr_m3 = {"max_depth": [8]} # mean
     # RandomForestRegressor best_score: 0.638195402073 best_params:
     # {'max_depth': 8}
-    rfr_m3 = RandomForestRegressor(max_depth=3, random_state=0)
+    rfr_m3 = RandomForestRegressor(max_depth=3, n_estimators=10, random_state=0)
     rfr_rs_m3 = RandomizedSearchCV(rfr_m3, n_iter=1, cv=5, n_jobs=20,
                                    param_distributions=param_dist_rfr_m3)
     rfr_rs_m3.fit(X_m3_train, y_m3_train)
@@ -984,14 +984,17 @@ for classification_method in classification_methods:
                 yield_single_examples=True)
             pred_val = \
                 extract_pred_from_estimator_predictions(pred_val)
-            pred_test = dnnr.predict(
-                input_fn=lambda: eval_input_fn(X_test_df, None, batch_size),
-                yield_single_examples=True)
-            pred_test = \
-                extract_pred_from_estimator_predictions(pred_test)
+            if evaluate_test_data:
+                pred_test = dnnr.predict(
+                    input_fn=lambda: eval_input_fn(X_test_df, None, batch_size),
+                    yield_single_examples=True)
+                pred_test = \
+                    extract_pred_from_estimator_predictions(pred_test)
+            else:
+                pred_test = np.zeros(len(X_test))
         else:
             raise ValueError('Unknown regression_method:', regression_method)
-
+        # print('*** pred_train.shape:', pred_train.shape)
         expected_sales_train = prob_train * pred_train
         expected_sales_val = prob_val * pred_val
         expected_sales_test = prob_test * pred_test
@@ -1011,10 +1014,6 @@ for classification_method in classification_methods:
             print("len(top_promising_sales_indices_test)=",
                   len(top_promising_sales_indices_test))
 
-        print("classification:", classification_method, "regression:", regression_method)
-        print(type(expected_sales_train), type(top_promising_sales_indices_train))
-        print('len(expected_sales_train):', len(expected_sales_train))
-        print('len(top_promising_sales_indices_train):', len(top_promising_sales_indices_train))
         e_total_revenue_train_sel = expected_sales_train[top_promising_sales_indices_train].sum()
         e_total_revenue_val_sel = expected_sales_val[top_promising_sales_indices_val].sum()
         e_total_revenue_test_sel = expected_sales_test[top_promising_sales_indices_test].sum()
