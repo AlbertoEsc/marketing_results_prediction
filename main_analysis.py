@@ -66,7 +66,7 @@ from tensorflow_data_processing import extract_pred_from_estimator_predictions
 # the whole analysis are executed
 filename = 'data/contract_data.csv'
 explanations_filename = 'data/variable_explanations.csv'
-NUMPY_SEED = 12345
+NUMPY_SEED = 123456
 enable_feature_selection = False # or True
 enable_histograms = False # or True
 enable_correlation_analysis = False # or True
@@ -77,7 +77,7 @@ enable_linear_regression_for_sold = False
 enable_random_forest_classifier = True
 enable_gradient_boosting_classifier = False 
 enable_support_vector_classifier = False 
-enable_dnn_classifier = False
+enable_dnn_classifier = True
 
 enable_linear_regression_for_sales = False 
 enable_ridge_regression = False 
@@ -708,7 +708,7 @@ if enable_support_vector_regressor:
 # M2. DNNRegressor
 if enable_dnn_regressor:
     eval_batch_size = 1000
-    num_iter_dnn = 2
+    num_iter_dnn = 1
 
     print('Training a DNNRegressor')
     # tf.logging.set_verbosity(tf.logging.INFO)
@@ -725,13 +725,17 @@ if enable_dnn_regressor:
         my_feature_columns.append(tf.feature_column.numeric_column(key=key))
 
     # train_steps = 15000  # 20000
-    param_dist_dnn = {'batch_size': [50, 55, 60, 65, 70, 75, 80, 85],
-                      'hidden_0': [40, 45, 50, 55, 60, 65],
-                      'hidden_1': [7, 10, 13, 15, 17,20],
-                      'hidden_2': [6, 8, 10, 12, 14, 16],
-                      'dropout': [0.1, 0.15, 0.20, 0.25, 0.30, 0.35],
+    param_dist_dnn = {'batch_size': [55, 60, 65, 70, 75, 80, 85],
+                      'hidden_0': [35, 40, 45, 50, 55],
+                      'hidden_1': [7, 8, 9, 10, 11, 12, 13],
+                      'hidden_2': [4, 5, 6, 7, 8],
+                      'dropout': [0.15, 0.17, 0.20, 0.23, 0.25],
                       'batch_norm': [False],  # Not available in TF 1.8
-                      'train_steps':  [2500, 5000, 7500, 10000, 12500]}
+                      'train_steps':  [10000, 11000, 12000, 13000, 14000]}
+
+    param_dist_dnn = {'train_steps': [12500], 'hidden_2': [6], 'hidden_1': [10], 'hidden_0': [50], 'dropout': [0.2],
+                       'batch_size': [70], 'batch_norm': [False]}
+    # best MSE validation: 10406.377452086892
 
     best_params = None
     best_model = None
@@ -827,7 +831,7 @@ if enable_dnn_regressor:
     pred_dnnr_train = best_pred_dnnr_train
     pred_dnnr_val = best_pred_dnnr_val
     pred_dnnr_test = best_pred_dnnr_test
-
+    dnnr = best_model
     regression_methods.append('dnnr')
 
     print(test_m2_acc)
