@@ -13,6 +13,12 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
+# Warning, the following two lines disables GPU usage
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="-1" 
+
+from datetime import datetime
+
 import tensorflow as tf
 import pandas as pd
 import numpy as np
@@ -95,6 +101,8 @@ evaluate_test_data = False  # or True
 enable_efficiency_plot = False
 
 if __name__ == "__main__":
+    t_init = datetime.now()
+    print('computation started at: ' + str(t_init))
     ############################################################################
     # Data loading and explorative data analysis
     # Load data and field explanations (files have been renamed)
@@ -1121,3 +1129,7 @@ if __name__ == "__main__":
 
     print("Variable importances:\n", var_importances_pd)
     print("Variables ordered by importance:", var_importances_pd.index.tolist())
+
+    t_end = datetime.now()
+    print('computation ended at: ' + str(t_end))
+    print('execution time: ' + str(t_end - t_init))
